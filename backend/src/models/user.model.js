@@ -12,6 +12,22 @@ const userSchema = new mongoose.Schema({
     required: true,
   },
   name: String,
+  isEmailVerified: {
+    type: Boolean,
+    default: false
+  },
+
+  authProvider: {
+    type: String,
+    enum: ["local", "google"],
+    default: "local"
+  },
+
+  googleId: {
+    type: String,
+    default: null
+  },
+  
   isActive: { type: Boolean, default: true },
   isDeleted: { type: Boolean, default: false },
   lastLoginAt: Date,
