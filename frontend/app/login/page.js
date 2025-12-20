@@ -1,0 +1,143 @@
+"use client"
+
+import Link from "next/link"
+import { Layers } from "lucide-react"
+import { useState, useRef } from "react"
+import axios from "axios"
+import { GoogleLogin } from "@react-oauth/google"
+
+export default function LoginPage() {
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  })
+
+  const googleBtnRef = useRef(null)
+
+  // ✅ Google success handler (ID TOKEN)
+  const handleGoogleLoginSuccess = async (credentialResponse) => {
+    try {
+      await axios.post(
+        "http://localhost:4000/api/auth/google",
+        {
+          idToken: credentialResponse.credential,
+        },
+        { withCredentials: true }
+      )
+
+      window.location.href = "/dashboard"
+    } catch (error) {
+      console.error("Google login failed:", error)
+    }
+  }
+
+  // Normal email/password login (unchanged)
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    try {
+      await axios.post("http://localhost:4000/api/auth/login", formData, {
+        withCredentials: true
+      })
+    } catch (error) {
+      console.error("Login error:", error)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-[#0f1419] flex items-center justify-center px-4">
+      <div className="w-full max-w-md">
+        {/* Logo */}
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-16 h-16 bg-[#7de0c6] rounded-2xl flex items-center justify-center mb-4">
+            <Layers className="w-9 h-9 text-[#0f1419]" />
+          </div>
+          <h1 className="text-3xl font-bold text-white">Welcome back</h1>
+          <p className="text-[#94a3b8] mt-2">Sign in to your workspace</p>
+        </div>
+
+        {/* Form Card */}
+        <div className="bg-[#1a1f28] border border-[#2d3748] rounded-xl p-8">
+          
+
+          {/* 🔒 Hidden Google Login (logic only) */}
+          <div>
+            <GoogleLogin
+              onSuccess={handleGoogleLoginSuccess}
+              onError={() => console.log("Google Login Failed")}
+              useOneTap={false}
+              ref={googleBtnRef}
+            />
+          </div>
+
+          {/* Divider */}
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-[#2d3748]"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-4 bg-[#1a1f28] text-[#94a3b8]">OR</span>
+            </div>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit}>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-white mb-2">
+                  Work email
+                </label>
+                <input
+                  type="email"
+                  placeholder="you@company.com"
+                  className="w-full px-4 py-3 bg-[#0f1419] border border-[#2d3748] rounded-lg text-white placeholder-[#94a3b8] focus:outline-none focus:ring-2 focus:ring-[#7de0c6]"
+                  value={formData.email}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-white mb-2">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  placeholder="Enter your password"
+                  className="w-full px-4 py-3 bg-[#0f1419] border border-[#2d3748] rounded-lg text-white placeholder-[#94a3b8] focus:outline-none focus:ring-2 focus:ring-[#7de0c6]"
+                  value={formData.password}
+                  onChange={(e) =>
+                    setFormData({ ...formData, password: e.target.value })
+                  }
+                />
+                <div className="text-right mt-2">
+                  <Link
+                    href="/forgot-password"
+                    className="text-sm text-[#7de0c6] hover:underline"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3 bg-[#7de0c6] text-[#0f1419] font-semibold rounded-lg hover:bg-[#68c9ad]"
+              >
+                Sign in
+              </button>
+            </div>
+          </form>
+
+          {/* Signup Link */}
+          <p className="text-center text-sm text-[#94a3b8] mt-6">
+            Don't have an account?{" "}
+            <Link href="/signup" className="text-[#7de0c6] hover:underline">
+              Create account
+            </Link>
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}

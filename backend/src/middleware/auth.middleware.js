@@ -1,34 +1,39 @@
 import jwt from "jsonwebtoken";
 
 const authenticate = (req, res, next) => {
-  const authHeader = req.headers.authorization;
+  const token = req.cookies.accessToken;
 
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({
-      message: "Authorization token missing or malformed",
-    });
+  if (!token) {
+    return res.status(401).json({ message: "Not authenticated" });
   }
-
-  const token = authHeader.split(" ")[1];
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
+    if (!decoded?.sub) {
+      return res.status(401).json({ message: "Invalid token payload" });
+    }
+
+    if (decoded.isEmailVerified !== true) {
+      return res.status(403).json({
+        message:
+          "Email not verified. Please verify your email to access this resource.",
+      });
+    }
+
     req.user = {
-      userId: decoded.sub,
+      id: decoded.sub,
       email: decoded.email,
+      isEmailVerified: decoded.isEmailVerified,
     };
 
     next();
   } catch (error) {
-    if (error.name === "TokenExpiredError") {
-      return res.status(401).json({
-        message: "Access token expired",
-      });
-    }
-
     return res.status(401).json({
-      message: "Invalid access token",
+      message:
+        error.name === "TokenExpiredError"
+          ? "Access token expired"
+          : "Invalid access token",
     });
   }
 };

@@ -23,7 +23,6 @@ const documentPermissionSchema = new mongoose.Schema(
   { timestamps: true }
 )
 
-/* Indexes */
 documentPermissionSchema.index(
   { documentId: 1, userId: 1 },
   { unique: true }

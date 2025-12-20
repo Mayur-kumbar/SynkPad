@@ -9,7 +9,10 @@ const userSchema = new mongoose.Schema({
   },
   passwordHash: {
     type: String,
-    required: true,
+    required: function (){
+      return this.authProvider === "local"
+    },
+    default: null
   },
   name: String,
   isEmailVerified: {
@@ -34,5 +37,13 @@ const userSchema = new mongoose.Schema({
 }, { timestamps: true })
 
 userSchema.index({ email: 1 }, { unique: true })
+
+userSchema.index(
+  { googleId: 1 },
+  {
+    unique: true,
+    sparse: true, 
+  }
+);
 
 export default mongoose.model("User", userSchema)

@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 5000
 
 app.use(
     cors({
-        origin: process.env.CORS_ORIGIN,
+        origin: "http://localhost:3000",
         credentials: true,
     })
 );
@@ -32,12 +32,6 @@ try {
 } catch (error) {
   console.error("Error connecting to database:", error)
 }
-
-
-app.get('/', (req, res) => {
-  res.send('Hello, World!')
-})
-
 
 app.listen(PORT, ()=> {
     console.log(`Server is running on port ${PORT}`)
