@@ -1,47 +1,73 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { Layers } from "lucide-react"
-import { useState, useRef } from "react"
-import axios from "axios"
-import { GoogleLogin } from "@react-oauth/google"
+import Link from "next/link";
+import { Layers } from "lucide-react";
+import { useState, useRef } from "react";
+import axios from "axios";
+import { GoogleLogin } from "@react-oauth/google";
+import api from "@/lib/api";
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
-  })
+  });
 
-  const googleBtnRef = useRef(null)
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  // ✅ Google success handler (ID TOKEN)
+  const googleBtnRef = useRef(null);
+
   const handleGoogleLoginSuccess = async (credentialResponse) => {
     try {
-      await axios.post(
-        "http://localhost:4000/api/auth/google",
+      await api.post(
+        "/auth/google",
         {
           idToken: credentialResponse.credential,
         },
         { withCredentials: true }
-      )
+      );
 
-      window.location.href = "/dashboard"
+      window.location.href = "/dashboard";
     } catch (error) {
-      console.error("Google login failed:", error)
+      console.error("Google login failed:", error);
     }
-  }
+  };
 
   // Normal email/password login (unchanged)
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
     try {
-      await axios.post("http://localhost:4000/api/auth/login", formData, {
-        withCredentials: true
-      })
-    } catch (error) {
-      console.error("Login error:", error)
+      await api.post(
+        "/auth/login",
+        {
+          email: formData.email,
+          password: formData.password,
+        },
+        { withCredentials: true }
+      );
+
+      window.location.href = "/dashboard";
+    } catch (err) {
+      const status = err.response?.status;
+      const message = err.response?.data?.message;
+
+      if (status === 401) {
+        setError("Invalid email or password.");
+      } else if (status === 403) {
+        setError("Please verify your email before logging in.");
+      } else if (status === 400) {
+        setError(message || "Missing email or password.");
+      } else {
+        setError("Something went wrong. Please try again later.");
+      }
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-[#0f1419] flex items-center justify-center px-4">
@@ -57,10 +83,14 @@ export default function LoginPage() {
 
         {/* Form Card */}
         <div className="bg-[#1a1f28] border border-[#2d3748] rounded-xl p-8">
-          
-
           {/* 🔒 Hidden Google Login (logic only) */}
           <div>
+            {error && (
+              <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+                {error}
+              </div>
+            )}
+
             <GoogleLogin
               onSuccess={handleGoogleLoginSuccess}
               onError={() => console.log("Google Login Failed")}
@@ -122,9 +152,10 @@ export default function LoginPage() {
 
               <button
                 type="submit"
-                className="w-full py-3 bg-[#7de0c6] text-[#0f1419] font-semibold rounded-lg hover:bg-[#68c9ad]"
+                disabled={loading}
+                className="w-full py-3 bg-[#7de0c6] text-[#0f1419] font-semibold rounded-lg hover:bg-[#68c9ad] disabled:opacity-50"
               >
-                Sign in
+                {loading ? "Signing in..." : "Sign in"}
               </button>
             </div>
           </form>
@@ -139,5 +170,5 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -28,6 +28,7 @@ const userSchema = new mongoose.Schema({
 
   googleId: {
     type: String,
+    sparse: true,
     default: null
   },
   
@@ -38,12 +39,12 @@ const userSchema = new mongoose.Schema({
 
 userSchema.index({ email: 1 }, { unique: true })
 
-userSchema.index(
-  { googleId: 1 },
-  {
-    unique: true,
-    sparse: true, 
-  }
-);
+// userSchema.index(
+//   { googleId: 1 },
+//   {
+//     unique: true,
+//     sparse: true, 
+//   }
+// );
 
 export default mongoose.model("User", userSchema)

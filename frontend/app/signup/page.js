@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { Layers } from "lucide-react";
 import { useState, useRef } from "react";
-import axios from "axios";
 import { GoogleLogin } from "@react-oauth/google";
+import api from "@/lib/api";
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -13,39 +13,65 @@ export default function SignupPage() {
     password: "",
   });
 
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+
   const googleBtnRef = useRef(null);
 
   // ✅ Google signup success handler (ID TOKEN)
   const handleGoogleSignupSuccess = async (credentialResponse) => {
+    setError(null);
+    setLoading(true);
+
     try {
-      await axios.post(
-        "http://localhost:4000/api/auth/google",
-        {
-          idToken: credentialResponse.credential,
-        },
-        { withCredentials: true }
-      );
+      await api.post("/auth/google", {
+        idToken: credentialResponse.credential,
+      });
 
       window.location.href = "/dashboard";
-    } catch (error) {
-      console.error("Google signup failed:", error);
-    }
+    } catch (err) {
+      const status = err.response?.status;
+      const message = err.response?.data?.message;
+
+      if (status === 409) {
+        setError("This Google account is already linked to another user.");
+      } else if (status === 401) {
+        setError("Google authentication failed. Please try again.");
+      } else {
+        setError(message || "Something went wrong. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    } 
   };
 
   // Normal email/password signup (unchanged)
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError(null);
+    setLoading(true);
+
     try {
-      const res = await axios.post("http://localhost:4000/api/auth/register", {
+      await api.post("/auth/register", {
         name: formData.fullName,
         email: formData.email,
         password: formData.password,
       });
 
-      console.log("Registration successful:", res.data);
+      window.location.href = "/verify-email";
+    } catch (err) {
+      const status = err.response?.status;
+      const message = err.response?.data?.message;
 
-    } catch (error) {
-      console.error("Registration error:", error);
+      if (status === 409) {
+        setError("An account with this email already exists.");
+      } else if (status === 400) {
+        setError(message || "Invalid input. Please check your details.");
+      } else {
+        setError("Server error. Please try again later.");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -64,6 +90,12 @@ export default function SignupPage() {
         {/* Form Card */}
         <div className="bg-[#1a1f28] border border-[#2d3748] rounded-xl p-8">
           <div>
+            {error && (
+              <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 text-sm">
+                {error}
+              </div>
+            )}
+
             <GoogleLogin
               onSuccess={handleGoogleSignupSuccess}
               onError={() => console.log("Google Signup Failed")}
@@ -135,9 +167,10 @@ export default function SignupPage() {
 
               <button
                 type="submit"
-                className="w-full py-3 bg-[#7de0c6] text-[#0f1419] font-semibold rounded-lg hover:bg-[#68c9ad]"
+                disabled={loading}
+                className="w-full py-3 bg-[#7de0c6] text-[#0f1419] font-semibold rounded-lg hover:bg-[#68c9ad] disabled:opacity-50"
               >
-                Create account
+                {loading ? "Creating account..." : "Create account"}
               </button>
             </div>
           </form>

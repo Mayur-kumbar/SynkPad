@@ -1,101 +1,140 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useState } from "react";
+import Link from "next/link";
+import { Layers, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import axios from "axios";
+import api from "@/lib/api";
 
 export default function VerifyEmailPage() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
+  const [status, setStatus] = useState("idle"); // idle | loading | success | error
+  const [token, setToken] = useState("");
+  const [error, setError] = useState(null);
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState(null);
 
-  const token = searchParams.get("token");
-
-  const [status, setStatus] = useState("loading"); 
-  // loading | success | error
-  const [message, setMessage] = useState("");
-  const [resendLoading, setResendLoading] = useState(false);
-
-  // 🔐 Verify email on page load
-  useEffect(() => {
-    if (!token) {
-      setStatus("error");
-      setMessage("Invalid or missing verification token.");
+  const verifyEmail = async () => {
+    if (!token.trim()) {
+      setError("Please enter the verification token.");
       return;
     }
 
-    const verifyEmail = async () => {
-      try {
-        const res = await axios.get(
-          `http://localhost:4000/api/auth/verify-email?token=${token}`
-        );
+    setStatus("loading");
+    setError(null);
 
-        setStatus("success");
-        setMessage(res.data.message || "Email verified successfully.");
-      } catch (err) {
-        setStatus("error");
-        setMessage(
-          err.response?.data?.message || "Verification failed."
-        );
-      }
-    };
-
-    verifyEmail();
-  }, [token]);
-
-  // 🔁 Resend verification email
-  const handleResendMail = async () => {
-    setResendLoading(true);
     try {
-      await axios.post(
-        "http://localhost:4000/api/auth/resend-verification-email",
-        {
-          // backend expects email
-          email: searchParams.get("email") || ""
-        }
-      );
-
-      alert(
-        "If your account exists and is unverified, a verification email has been sent."
-      );
+      await api.get("/auth/verify-email", {
+        params: { token },
+      });
+      setStatus("success");
     } catch (err) {
-      alert("Failed to resend verification email.");
-    } finally {
-      setResendLoading(false);
+      setStatus("error");
+      setError(err.response?.data?.message || "Verification failed.");
     }
   };
 
-  const goToLogin = () => {
-    router.push("/login");
+  const resendVerification = async () => {
+    if (!email.trim()) {
+      setMessage("Please enter your email address.");
+      return;
+    }
+
+    try {
+      await api.post("/auth/resend-verification-email", { email });
+      setMessage("Verification email sent. Please check your inbox.");
+    } catch (err) {
+      setMessage(
+        err.response?.data?.message || "Failed to resend verification email."
+      );
+    }
   };
 
   return (
-    <div style={{ padding: 40, maxWidth: 500 }}>
-      <h1>Email Verification</h1>
+    <div className="min-h-screen bg-[#0f1419] flex items-center justify-center px-4">
+      <div className="w-full max-w-md text-center">
+        <div className="w-16 h-16 bg-[#7de0c6] rounded-2xl flex items-center justify-center mb-6 mx-auto">
+          <Layers className="w-9 h-9 text-[#0f1419]" />
+        </div>
 
-      {status === "loading" && <p>Verifying your email...</p>}
+        <div className="bg-[#1a1f28] border border-[#2d3748] rounded-xl p-8">
+          {/* TOKEN INPUT */}
+          {status !== "success" && (
+            <>
+              <input
+                type="text"
+                placeholder="Paste verification token here"
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                className="w-full px-4 py-3 mb-4 bg-[#0f1419] border border-[#2d3748] rounded-lg text-white placeholder-[#94a3b8] focus:outline-none focus:ring-2 focus:ring-[#7de0c6]"
+              />
 
-      {status === "success" && (
-        <>
-          <p style={{ color: "green" }}>{message}</p>
-          <button onClick={goToLogin}>Go to Login</button>
-        </>
-      )}
+              {error && <p className="text-sm text-red-400 mb-3">{error}</p>}
 
-      {status === "error" && (
-        <>
-          <p style={{ color: "red" }}>{message}</p>
+              <button
+                onClick={verifyEmail}
+                className="w-full px-6 py-3 bg-[#7de0c6] text-[#0f1419] font-semibold rounded-lg hover:bg-[#68c9ad]"
+              >
+                Verify Email
+              </button>
+            </>
+          )}
 
-          <button
-            onClick={handleResendMail}
-            disabled={resendLoading}
-            style={{ marginTop: 10 }}
-          >
-            {resendLoading
-              ? "Sending..."
-              : "Resend Verification Email"}
-          </button>
-        </>
-      )}
+          {status === "loading" && (
+            <>
+              <Loader2 className="w-16 h-16 text-[#7de0c6] mx-auto my-4 animate-spin" />
+              <p className="text-[#94a3b8]">Verifying your email…</p>
+            </>
+          )}
+
+          {status === "success" && (
+            <>
+              <CheckCircle className="w-16 h-16 text-[#7de0c6] mx-auto mb-4" />
+              <h1 className="text-2xl font-bold text-white mb-2">
+                Email verified!
+              </h1>
+              <p className="text-[#94a3b8] mb-6">
+                Your email has been successfully verified.
+              </p>
+              <Link
+                href="/login"
+                className="inline-block px-6 py-3 bg-[#7de0c6] text-[#0f1419] font-semibold rounded-lg hover:bg-[#68c9ad]"
+              >
+                Go to Login
+              </Link>
+            </>
+          )}
+
+          {status === "error" && (
+            <>
+              <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+              <p className="text-[#94a3b8] mb-4">
+                Verification failed. The token may be invalid or expired.
+              </p>
+              <input
+                type="email"
+                placeholder="Enter your email address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 mb-3 bg-[#0f1419] border border-[#2d3748] rounded-lg text-white placeholder-[#94a3b8] focus:outline-none focus:ring-2 focus:ring-[#7de0c6]"
+              />
+
+              <button
+                onClick={resendVerification}
+                className="w-full px-6 py-3 bg-[#7de0c6] text-[#0f1419] font-semibold rounded-lg hover:bg-[#68c9ad] mb-3"
+              >
+                Resend Verification Email
+              </button>
+              {message && (
+                <p className="text-sm text-[#94a3b8] mt-2">{message}</p>
+              )}
+
+              <Link href="/login" className="text-[#7de0c6] hover:underline">
+                Back to Login
+              </Link>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
