@@ -1,65 +1,94 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { Search, Plus, Folder } from "lucide-react"
-import axios from "axios"
-import Link from "next/link"
-import CreateWorkspaceModal from "@/components/ui/CreateWorkspaceModal"
-import Header from "@/components/ui/Header"
+import { useEffect, useState } from "react";
+import { Search, Plus, Folder, Crown, Users } from "lucide-react";
+import api from "@/lib/api";
+import Link from "next/link";
+import CreateWorkspaceModal from "@/components/ui/CreateWorkspaceModal";
+import Header from "@/components/ui/Header";
+import { useAuth } from "@/context/AuthContext";
 
 export default function DashboardPage() {
-  const [workspaces, setWorkspaces] = useState([])
-  const [searchQuery, setSearchQuery] = useState("")
-  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [workspaces, setWorkspaces] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
-    fetchWorkspaces()
-  }, [])
+    fetchWorkspaces();
+  }, []);
 
   const fetchWorkspaces = async () => {
     try {
-      const response = await axios.get("/api/workspaces")
-      setWorkspaces(response.data)
+      const response = await api.get("/workspace");
+      setWorkspaces(response.data.workspaces);
+      console.log("Workspaces fetched:", response.data);
     } catch (error) {
-      console.error("Fetch workspaces error:", error)
+      console.error("Fetch workspaces error:", error);
     }
-  }
+  };
 
   const createWorkspace = async (workspaceData) => {
     try {
-      await axios.post("/api/workspaces", workspaceData)
-      fetchWorkspaces()
+      const res = await api.post("/workspace", {
+        name: workspaceData.name,
+        description: workspaceData.description,
+      });
+      setWorkspaces((prev) => [...prev, res.data.workspace]);
+      fetchWorkspaces();
     } catch (error) {
-      console.error("Create workspace error:", error)
+      console.error("Create workspace error:", error);
     }
-  }
+  };
 
-  const mockWorkspaces = [
-    {
-      id: 1,
-      name: "Mayur's Design Team",
-      docCount: 4,
-      lastActive: "2 hours ago",
-      members: ["MK", "AR", "LP"],
-      extraMembers: 2,
-    },
-    {
-      id: 2,
-      name: "Product Development",
-      docCount: 12,
-      lastActive: "1 day ago",
-      members: ["JD", "SK"],
-      extraMembers: 5,
-    },
-    {
-      id: 3,
-      name: "Marketing Campaign",
-      docCount: 8,
-      lastActive: "3 days ago",
-      members: ["MR", "TK"],
-      extraMembers: 3,
-    },
-  ]
+  const getLastActiveTime = (updatedAt) => {
+    const differenceInMs = Date.now() - new Date(updatedAt).getTime();
+    const differenceInMinutes = Math.floor(differenceInMs / (1000 * 60));
+
+    if (differenceInMinutes < 60) {
+      return `${differenceInMinutes}m ago`;
+    }
+
+    const differenceInHours = Math.floor(differenceInMinutes / 60);
+    if (differenceInHours < 24) {
+      return `${differenceInHours}h ago`;
+    }
+
+    const differenceInDays = Math.floor(differenceInHours / 24);
+    return `${differenceInDays}d ago`;
+  };
+
+  const getOwnerOrMembers = (ownerId) => {
+    const isOwner = user && user.id === ownerId;
+
+    return (
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-2">
+          <div
+            className={`w-7 h-7 rounded-md flex items-center justify-center ${
+              isOwner
+                ? "bg-[#7de0c6]/15 text-[#7de0c6]"
+                : "bg-[#252b36] text-[#94a3b8] border border-[#2d3748]"
+            }`}
+          >
+            {isOwner ? (
+              <Crown className="w-4 h-4" />
+            ) : (
+              <Users className="w-4 h-4" />
+            )}
+          </div>
+
+          <span
+            className={`text-xs font-medium tracking-wide uppercase ${
+              isOwner ? "text-[#7de0c6]" : "text-[#94a3b8]"
+            }`}
+          >
+            {isOwner ? "Owner (You)" : "Member"}
+          </span>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-[#0f1419]">
@@ -68,8 +97,12 @@ export default function DashboardPage() {
       <main className="mx-auto max-w-7xl px-6 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Your Workspaces</h1>
-            <p className="text-[#94a3b8]">Manage and access all your collaborative spaces</p>
+            <h1 className="text-3xl font-bold text-white mb-2">
+              Your Workspaces
+            </h1>
+            <p className="text-[#94a3b8]">
+              Manage and access all your collaborative spaces
+            </p>
           </div>
           <button
             onClick={() => setIsModalOpen(true)}
@@ -91,51 +124,117 @@ export default function DashboardPage() {
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {mockWorkspaces.map((workspace) => (
-            <Link
-              key={workspace.id}
-              href={`/workspace/${workspace.id}`}
-              className="bg-[#1a1f28] border border-[#2d3748] rounded-xl p-6 hover:bg-[#252b36] hover:border-[#7de0c6] transition-all"
+        {workspaces.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div
+              className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#252b36] to-[#1f242e] 
+                    flex items-center justify-center mb-6
+                    border border-[#2d3748]"
             >
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-[#252b36] rounded-lg flex items-center justify-center shrink-0">
-                  <Folder className="w-6 h-6 text-[#7de0c6]" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-lg font-semibold text-white mb-1 truncate">{workspace.name}</h3>
-                  <p className="text-sm text-[#94a3b8] mb-3">
-                    {workspace.docCount} docs • last active {workspace.lastActive}
-                  </p>
-                  <div className="flex items-center gap-1">
-                    {workspace.members.map((member, idx) => (
-                      <div
-                        key={idx}
-                        className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium ${
-                          idx === 0
-                            ? "bg-[#7de0c6] text-[#0f1419]"
-                            : idx === 1
-                              ? "bg-[#fbbf24] text-[#0f1419]"
-                              : "bg-[#60a5fa] text-white"
-                        }`}
+              <Folder className="w-8 h-8 text-[#7de0c6]" />
+            </div>
+
+            <h2 className="text-xl font-semibold text-white mb-2">
+              No workspaces yet
+            </h2>
+
+            <p className="text-[#94a3b8] max-w-sm mb-6">
+              Create your first workspace to start collaborating and organizing
+              your documents.
+            </p>
+
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center gap-2 px-5 py-2.5 
+                 bg-[#7de0c6] text-[#0f1419] font-medium rounded-lg
+                 hover:bg-[#68c9ad] transition-colors"
+            >
+              <Plus className="w-5 h-5" />
+              Create Workspace
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {workspaces.map((workspace) => (
+              <Link
+                key={workspace._id}
+                href={`/workspace/${workspace._id}`}
+                className="group relative bg-gradient-to-br from-[#1a1f28] to-[#161b24] 
+                   border border-[#2d3748] rounded-2xl p-6
+                   hover:border-[#7de0c6] hover:shadow-lg hover:shadow-[#7de0c6]/10
+                   transition-all duration-300 ease-out
+                   hover:-translate-y-1 overflow-hidden"
+              >
+                {/* Subtle gradient overlay on hover */}
+                <div
+                  className="absolute inset-0 bg-gradient-to-br from-[#7de0c6]/0 to-[#7de0c6]/0 
+                  group-hover:from-[#7de0c6]/5 group-hover:to-transparent 
+                  transition-all duration-300 rounded-2xl pointer-events-none"
+                />
+
+                {/* Content wrapper */}
+                <div className="relative z-10">
+                  {/* Top metadata row */}
+                  <div className="mb-4">
+                    {getOwnerOrMembers(workspace.ownerId)}
+                  </div>
+
+                  {/* Main content */}
+                  <div className="flex items-start gap-4">
+                    {/* Icon with enhanced styling */}
+                    <div
+                      className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#252b36] to-[#1f242e] 
+                      flex items-center justify-center
+                      group-hover:from-[#2a3140] group-hover:to-[#252b36]
+                      group-hover:scale-105
+                      transition-all duration-300 shrink-0
+                      shadow-inner border border-[#2d3748]/50"
+                    >
+                      <Folder className="w-7 h-7 text-[#7de0c6] group-hover:scale-110 transition-transform duration-300" />
+                    </div>
+
+                    {/* Text content */}
+                    <div className="flex-1 min-w-0">
+                      <h3
+                        className="text-lg font-semibold text-white truncate mb-2
+                       group-hover:text-[#7de0c6] transition-colors duration-200"
                       >
-                        {member}
+                        {workspace.name}
+                      </h3>
+                      <p className="text-sm text-[#94a3b8] line-clamp-2 leading-relaxed mb-4 min-h-[2.5rem]">
+                        {workspace.description || "No description provided."}
+                      </p>
+
+                      {/* Footer meta with enhanced styling */}
+                      <div className="flex items-center gap-4 text-xs text-[#64748b] font-medium">
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#252b36]/50">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#7de0c6]" />
+                          <span>
+                            {workspace.docCount}{" "}
+                            {workspace.docCount === 1 ? "doc" : "docs"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="opacity-60">Updated</span>
+                          <span className="text-[#94a3b8]">
+                            {getLastActiveTime(workspace.updatedAt)}
+                          </span>
+                        </div>
                       </div>
-                    ))}
-                    {workspace.extraMembers > 0 && (
-                      <div className="w-7 h-7 rounded-full bg-[#252b36] flex items-center justify-center text-xs text-[#94a3b8]">
-                        +{workspace.extraMembers}
-                      </div>
-                    )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </Link>
-          ))}
-        </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </main>
 
-      <CreateWorkspaceModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onCreate={createWorkspace} />
+      <CreateWorkspaceModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onCreate={createWorkspace}
+      />
     </div>
-  )
+  );
 }

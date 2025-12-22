@@ -41,7 +41,7 @@ api.interceptors.response.use(
     isRefreshing = true;
 
     try {
-      await api.post("/auth/refresh");
+      await api.post("/auth/refresh-token");
       isRefreshing = false;
       return api(originalRequest);
     } catch (refreshError) {

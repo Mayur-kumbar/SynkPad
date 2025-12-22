@@ -16,6 +16,7 @@ export function AuthProvider({ children }) {
         { withCredentials: true }
       );
       setUser(res.data.user);
+      console.log("Fetched user:", res.data.user);
     } catch {
       setUser(null);
     } finally {

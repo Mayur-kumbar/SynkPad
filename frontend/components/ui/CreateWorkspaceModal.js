@@ -6,14 +6,12 @@ import { X, Folder, Lightbulb } from "lucide-react"
 export default function CreateWorkspaceModal({ isOpen, onClose, onCreate }) {
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
-  const [privacy, setPrivacy] = useState("team")
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    onCreate({ name, description, privacy })
+    onCreate({ name, description})
     setName("")
     setDescription("")
-    setPrivacy("team")
     onClose()
   }
 
@@ -24,10 +22,12 @@ export default function CreateWorkspaceModal({ isOpen, onClose, onCreate }) {
   const unselectedClass = baseRadioClass + " bg-[#0f1419] border-[#2d3748] hover:border-[#3d4758]"
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative w-full max-w-lg mx-4 bg-[#1a1f28] border border-[#2d3748] rounded-2xl shadow-2xl">
+     <div className="relative w-full max-w-lg bg-[#1a1f28] border border-[#2d3748] rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto overscroll-contain">
+
         <div className="flex items-center justify-between p-6 pb-4">
           <h2 className="text-2xl font-bold text-white">Create New Workspace</h2>
           <button onClick={onClose} className="p-1 text-[#94a3b8] hover:text-white transition-colors">
@@ -59,7 +59,7 @@ export default function CreateWorkspaceModal({ isOpen, onClose, onCreate }) {
             />
           </div>
 
-          <div className="mb-4">
+          {/* <div className="mb-4">
             <label className="block text-sm font-medium text-white mb-2">Workspace Icon</label>
             <div className="flex items-center gap-3">
               <div className="w-14 h-14 bg-[#7de0c6] rounded-xl flex items-center justify-center">
@@ -72,9 +72,9 @@ export default function CreateWorkspaceModal({ isOpen, onClose, onCreate }) {
                 Choose Icon
               </button>
             </div>
-          </div>
+          </div> */}
 
-          <div className="mb-4">
+          {/* <div className="mb-4">
             <label className="block text-sm font-medium text-white mb-3">Privacy</label>
             <div className="space-y-2">
               <label className={privacy === "private" ? selectedClass : unselectedClass}>
@@ -106,7 +106,7 @@ export default function CreateWorkspaceModal({ isOpen, onClose, onCreate }) {
                 </div>
               </label>
             </div>
-          </div>
+          </div> */}
 
           <div className="flex items-start gap-3 p-4 bg-[#0f1419] border border-[#2d3748] rounded-lg mb-6">
             <div className="w-8 h-8 bg-teal-500/20 rounded-lg flex items-center justify-center shrink-0">

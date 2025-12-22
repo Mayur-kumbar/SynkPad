@@ -24,8 +24,10 @@ app.use(express.static("public"));
 app.use(cookieParser());
 
 import authRoutes from './routes/auth.routes.js'
+import workSpaceRoutes from "./routes/workspace.routes.js"
 
 app.use("/api/auth", authRoutes)
+app.use("/api/workspace", workSpaceRoutes)
 
 try {
   await connectDB()
