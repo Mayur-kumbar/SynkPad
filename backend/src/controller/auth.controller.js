@@ -9,17 +9,32 @@ import { OAuth2Client } from "google-auth-library";
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-/* -------------------- TOKEN HELPERS -------------------- */
+/* -------------------- CONSTANTS -------------------- */
+
+// IMPORTANT: jwt expects seconds, cookies expect ms
+const ACCESS_TOKEN_TTL_SEC = 15 * 60; // 15 min
+const ACCESS_TOKEN_MAX_AGE = ACCESS_TOKEN_TTL_SEC * 1000;
+
+const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+const cookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax",
+};
+
+/* -------------------- HELPERS -------------------- */
 
 const generateAccessToken = (user) =>
   jwt.sign(
     {
       sub: user._id.toString(),
       email: user.email,
+      name: user.name,
       isEmailVerified: user.isEmailVerified,
     },
     process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN }
+    { expiresIn: ACCESS_TOKEN_TTL_SEC } // ✅ FIXED
   );
 
 const generateRefreshToken = () =>
@@ -28,19 +43,55 @@ const generateRefreshToken = () =>
 const hashToken = (token) =>
   crypto.createHash("sha256").update(token).digest("hex");
 
+const clearAuthCookies = (res) => {
+  res.clearCookie("accessToken", cookieOptions);
+  res.clearCookie("refreshToken", cookieOptions);
+};
+
+/* -------------------- ISSUE TOKENS -------------------- */
+
+const issueTokens = async (res, user, message = "Authenticated") => {
+  const accessToken = generateAccessToken(user);
+  const refreshToken = generateRefreshToken();
+
+  await RefreshToken.create({
+    userId: user._id,
+    tokenHash: hashToken(refreshToken),
+    expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
+  });
+
+  res.cookie("accessToken", accessToken, {
+    ...cookieOptions,
+    maxAge: ACCESS_TOKEN_MAX_AGE,
+  });
+
+  res.cookie("refreshToken", refreshToken, {
+    ...cookieOptions,
+    maxAge: REFRESH_TOKEN_TTL_MS,
+  });
+
+  return res.json({
+    message,
+    user: {
+      id: user._id,
+      email: user.email,
+      name: user.name,
+      isEmailVerified: user.isEmailVerified,
+    },
+  });
+};
+
 /* -------------------- REGISTER -------------------- */
 
 const registerUser = async (req, res) => {
   const { name, email, password } = req.body;
 
-  if (!name || !email || !password) {
+  if (!name || !email || !password)
     return res.status(400).json({ message: "All fields are required." });
-  }
 
   try {
-    if (await User.findOne({ email })) {
+    if (await User.findOne({ email }))
       return res.status(409).json({ message: "User already exists." });
-    }
 
     const passwordHash = await bcrypt.hash(password, 10);
 
@@ -89,6 +140,7 @@ const loginUser = async (req, res) => {
     if (!(await bcrypt.compare(password, user.passwordHash)))
       return res.status(401).json({ message: "Invalid credentials." });
 
+    // single-session login
     await RefreshToken.deleteMany({ userId: user._id });
 
     user.lastLoginAt = new Date();
@@ -115,9 +167,8 @@ const googleOAuthCallback = async (req, res) => {
     });
 
     const payload = ticket.getPayload();
-    if (!payload || payload.aud !== process.env.GOOGLE_CLIENT_ID) {
+    if (!payload || payload.aud !== process.env.GOOGLE_CLIENT_ID)
       return res.status(401).json({ message: "Invalid Google token." });
-    }
 
     const { sub: googleId, email, email_verified, name } = payload;
 
@@ -127,7 +178,10 @@ const googleOAuthCallback = async (req, res) => {
     let user = await User.findOne({ email });
 
     const existingGoogleUser = await User.findOne({ googleId });
-    if (existingGoogleUser && (!user || !existingGoogleUser._id.equals(user._id))) {
+    if (
+      existingGoogleUser &&
+      (!user || !existingGoogleUser._id.equals(user._id))
+    ) {
       return res.status(409).json({
         message: "Google account already linked to another user.",
       });
@@ -154,40 +208,51 @@ const googleOAuthCallback = async (req, res) => {
     await issueTokens(res, user, "Login successful via Google");
   } catch (err) {
     console.error(err);
+    clearAuthCookies(res);
     res.status(401).json({ message: "Invalid Google ID token." });
   }
 };
 
-/* -------------------- TOKEN REFRESH -------------------- */
+/* -------------------- REFRESH TOKEN -------------------- */
 
 const refreshAccessToken = async (req, res) => {
   const token = req.cookies.refreshToken;
-  if (!token)
+
+  if (!token) {
+    clearAuthCookies(res);
     return res.status(401).json({ message: "Refresh token missing." });
+  }
 
   try {
     const tokenHash = hashToken(token);
 
-    const stored = await RefreshToken.findOne({
-      tokenHash,
-      isRevoked: false,
-      expiresAt: { $gt: new Date() },
-    });
+    const stored = await RefreshToken.findOneAndUpdate(
+      {
+        tokenHash,
+        isRevoked: false,
+        expiresAt: { $gt: new Date() },
+      },
+      {
+        isRevoked: true,
+        revokedAt: new Date(),
+      }
+    );
 
-    if (!stored)
+    if (!stored) {
+      clearAuthCookies(res);
       return res.status(401).json({ message: "Invalid refresh token." });
-
-    stored.isRevoked = true;
-    stored.revokedAt = new Date();
-    await stored.save();
+    }
 
     const user = await User.findById(stored.userId);
-    if (!user || !user.isEmailVerified)
-      return res.status(403).json({ message: "Unauthorized." });
+    if (!user || !user.isEmailVerified) {
+      clearAuthCookies(res);
+      return res.status(401).json({ message: "Unauthorized." });
+    }
 
     await issueTokens(res, user, "Token refreshed");
   } catch (err) {
     console.error(err);
+    clearAuthCookies(res);
     res.status(500).json({ message: "Server error." });
   }
 };
@@ -196,36 +261,33 @@ const refreshAccessToken = async (req, res) => {
 
 const logoutUser = async (req, res) => {
   const token = req.cookies.refreshToken;
-  if (token)
+
+  if (token) {
     await RefreshToken.updateOne(
       { tokenHash: hashToken(token) },
       { isRevoked: true }
     );
+  }
 
-  res.clearCookie("accessToken");
-  res.clearCookie("refreshToken");
+  clearAuthCookies(res);
   res.json({ message: "Logged out successfully." });
 };
 
 /* -------------------- CURRENT USER -------------------- */
 
 const getCurrentUser = async (req, res) => {
-  try {
-    if (!req.user)
-      return res.status(401).json({ message: "Not authenticated." });
+  if (!req.user)
+    return res.status(401).json({ message: "Not authenticated." });
 
-    res.json({ user: req.user });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error." });
-  }
+  res.json({ user: req.user });
 };
 
 /* -------------------- EMAIL VERIFY -------------------- */
 
 const verifyEmail = async (req, res) => {
   const { token } = req.query;
-  if (!token) return res.status(400).json({ message: "Token missing." });
+  if (!token)
+    return res.status(400).json({ message: "Token missing." });
 
   const record = await EmailToken.findOne({ token });
   if (!record || record.expiresAt < new Date())
@@ -237,75 +299,36 @@ const verifyEmail = async (req, res) => {
   res.json({ message: "Email verified successfully." });
 };
 
-/* -------------------- SHARED TOKEN ISSUER -------------------- */
-
-const issueTokens = async (res, user, message = "Login successful") => {
-  const accessToken = generateAccessToken(user);
-  const refreshToken = generateRefreshToken();
-
-  await RefreshToken.create({
-    userId: user._id,
-    tokenHash: hashToken(refreshToken),
-    expiresAt: new Date(Date.now() + 7 * 86400000),
-  });
-
-  res.cookie("accessToken", accessToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 15 * 60000,
-  });
-
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 7 * 86400000,
-  });
-
-  res.json({
-    message,
-    user: {
-      id: user._id,
-      email: user.email,
-      isEmailVerified: user.isEmailVerified,
-    },
-  });
-};
+/* -------------------- RESEND EMAIL -------------------- */
 
 const resendVerificationEmail = async (req, res) => {
-  try {
-    const { email } = req.body;
+  const { email } = req.body;
 
-    let genericResponseMessage =
-      "If an account with that email exists, a verification email has been sent.";
+  const genericMessage =
+    "If an account with that email exists, a verification email has been sent.";
 
-    if (!email) {
-      return res.status(400).json({ message: genericResponseMessage });
-    }
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(200).json({ message: genericResponseMessage });
-    }
-    if (user.isEmailVerified) {
-      return res.status(200).json({ message: genericResponseMessage });
-    }
-    await EmailToken.deleteMany({ userId: user._id });
+  if (!email)
+    return res.status(200).json({ message: genericMessage });
 
-    const verifyToken = crypto.randomBytes(32).toString("hex");
-    await new EmailToken({
-      userId: user._id,
-      token: verifyToken,
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-    }).save();
-    await sendVerificationEmail(email, verifyToken);
+  const user = await User.findOne({ email });
+  if (!user || user.isEmailVerified)
+    return res.status(200).json({ message: genericMessage });
 
-    return res.status(200).json({ message: genericResponseMessage });
-  } catch (error) {
-    console.error("Resend verification email error:", error);
-    return res.status(500).json({ message: "Server error." });
-  }
+  await EmailToken.deleteMany({ userId: user._id });
+
+  const verifyToken = crypto.randomBytes(32).toString("hex");
+  await EmailToken.create({
+    userId: user._id,
+    token: verifyToken,
+    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+  });
+
+  await sendVerificationEmail(email, verifyToken);
+
+  res.status(200).json({ message: genericMessage });
 };
+
+/* -------------------- EXPORTS -------------------- */
 
 export {
   registerUser,
@@ -315,5 +338,5 @@ export {
   logoutUser,
   verifyEmail,
   getCurrentUser,
-  resendVerificationEmail
+  resendVerificationEmail,
 };

@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Layers, CheckCircle, XCircle, Loader2 } from "lucide-react";
-import axios from "axios";
 import api from "@/lib/api";
 
 export default function VerifyEmailPage() {

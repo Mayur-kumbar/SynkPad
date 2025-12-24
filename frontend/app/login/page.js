@@ -19,6 +19,7 @@ export default function LoginPage() {
   const googleBtnRef = useRef(null);
 
   const handleGoogleLoginSuccess = async (credentialResponse) => {
+    setLoading(true)
     try {
       await api.post(
         "/auth/google",
@@ -31,6 +32,8 @@ export default function LoginPage() {
       window.location.href = "/dashboard";
     } catch (error) {
       console.error("Google login failed:", error);
+    } finally{
+      setLoading(false)
     }
   };
 
@@ -162,7 +165,7 @@ export default function LoginPage() {
 
           {/* Signup Link */}
           <p className="text-center text-sm text-[#94a3b8] mt-6">
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <Link href="/signup" className="text-[#7de0c6] hover:underline">
               Create account
             </Link>

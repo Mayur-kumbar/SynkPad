@@ -2,18 +2,17 @@ import { transporter  } from "./transporter.js";
 
 await transporter.verify();
 
-export default async function sendVerificationEmail(email, token) {
+export default async function sendWorkspaceInviteEmail(email, token) {
   const mailOptions = {
     from: process.env.EMAIL_FROM,
     to: email,
-    subject: "Verify your email - SynkPad",
+    subject: "Workspace Invitation - SynkPad",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 520px; margin: auto;">
-  <h2>Welcome to SynkPad 👋</h2>
+  <h2>Hello from SynkPad 👋</h2>
 
   <p>
-    Please verify your email by copying the verification token below and
-    pasting it into the verification page.
+    You have been invited to join a workspace on SynkPad.
   </p>
 
   <div
@@ -35,9 +34,6 @@ export default async function sendVerificationEmail(email, token) {
 
   <hr style="margin: 24px 0;" />
 
-  <p style="font-size: 14px; color: #555;">
-    If you did not create an account, you can safely ignore this email.
-  </p>
 
   <p style="font-size: 13px; color: #777;">
     This verification token expires in <b>24 hours</b>.

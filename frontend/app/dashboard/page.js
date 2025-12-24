@@ -1,7 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Search, Plus, Folder, Crown, Users } from "lucide-react";
+import {
+  Search,
+  Plus,
+  Folder,
+  Crown,
+  Users,
+  MoreVertical,
+  Edit2,
+  Share2,
+  Trash2,
+} from "lucide-react";
 import api from "@/lib/api";
 import Link from "next/link";
 import CreateWorkspaceModal from "@/components/ui/CreateWorkspaceModal";
@@ -12,6 +22,7 @@ export default function DashboardPage() {
   const [workspaces, setWorkspaces] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState(null);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -22,7 +33,6 @@ export default function DashboardPage() {
     try {
       const response = await api.get("/workspace");
       setWorkspaces(response.data.workspaces);
-      console.log("Workspaces fetched:", response.data);
     } catch (error) {
       console.error("Fetch workspaces error:", error);
     }
@@ -41,51 +51,46 @@ export default function DashboardPage() {
     }
   };
 
+  const deleteWorkspace = async (workspaceId) => {
+    try {
+      await api.delete(`/workspace/${workspaceId}`);
+      setWorkspaces((prev) => prev.filter((w) => w._id !== workspaceId));
+      setOpenDropdown(null);
+    } catch (error) {
+      console.error("Delete workspace error:", error);
+    }
+  };
+
   const getLastActiveTime = (updatedAt) => {
-    const differenceInMs = Date.now() - new Date(updatedAt).getTime();
-    const differenceInMinutes = Math.floor(differenceInMs / (1000 * 60));
-
-    if (differenceInMinutes < 60) {
-      return `${differenceInMinutes}m ago`;
-    }
-
-    const differenceInHours = Math.floor(differenceInMinutes / 60);
-    if (differenceInHours < 24) {
-      return `${differenceInHours}h ago`;
-    }
-
-    const differenceInDays = Math.floor(differenceInHours / 24);
-    return `${differenceInDays}d ago`;
+    const diff = Date.now() - new Date(updatedAt).getTime();
+    const mins = Math.floor(diff / (1000 * 60));
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
   };
 
   const getOwnerOrMembers = (ownerId) => {
     const isOwner = user && user.id === ownerId;
 
     return (
-      <div className="flex items-center justify-between mb-5">
-        <div className="flex items-center gap-2">
-          <div
-            className={`w-7 h-7 rounded-md flex items-center justify-center ${
-              isOwner
-                ? "bg-[#7de0c6]/15 text-[#7de0c6]"
-                : "bg-[#252b36] text-[#94a3b8] border border-[#2d3748]"
-            }`}
-          >
-            {isOwner ? (
-              <Crown className="w-4 h-4" />
-            ) : (
-              <Users className="w-4 h-4" />
-            )}
-          </div>
-
-          <span
-            className={`text-xs font-medium tracking-wide uppercase ${
-              isOwner ? "text-[#7de0c6]" : "text-[#94a3b8]"
-            }`}
-          >
-            {isOwner ? "Owner (You)" : "Member"}
-          </span>
+      <div className="flex items-center gap-2">
+        <div
+          className={`w-7 h-7 rounded-md flex items-center justify-center ${
+            isOwner
+              ? "bg-[#7de0c6]/15 text-[#7de0c6]"
+              : "bg-[#252b36] text-[#94a3b8] border border-[#2d3748]"
+          }`}
+        >
+          {isOwner ? <Crown className="w-4 h-4" /> : <Users className="w-4 h-4" />}
         </div>
+        <span
+          className={`text-xs font-medium uppercase ${
+            isOwner ? "text-[#7de0c6]" : "text-[#94a3b8]"
+          }`}
+        >
+          {isOwner ? "Owner (You)" : "Member"}
+        </span>
       </div>
     );
   };
@@ -126,11 +131,7 @@ export default function DashboardPage() {
 
         {workspaces.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div
-              className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#252b36] to-[#1f242e] 
-                    flex items-center justify-center mb-6
-                    border border-[#2d3748]"
-            >
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#252b36] to-[#1f242e] flex items-center justify-center mb-6 border border-[#2d3748]">
               <Folder className="w-8 h-8 text-[#7de0c6]" />
             </div>
 
@@ -145,9 +146,7 @@ export default function DashboardPage() {
 
             <button
               onClick={() => setIsModalOpen(true)}
-              className="flex items-center gap-2 px-5 py-2.5 
-                 bg-[#7de0c6] text-[#0f1419] font-medium rounded-lg
-                 hover:bg-[#68c9ad] transition-colors"
+              className="flex items-center gap-2 px-5 py-2.5 bg-[#7de0c6] text-[#0f1419] font-medium rounded-lg hover:bg-[#68c9ad] transition-colors"
             >
               <Plus className="w-5 h-5" />
               Create Workspace
@@ -166,39 +165,94 @@ export default function DashboardPage() {
                    hover:-translate-y-1 overflow-hidden"
               >
                 {/* Subtle gradient overlay on hover */}
-                <div
-                  className="absolute inset-0 bg-gradient-to-br from-[#7de0c6]/0 to-[#7de0c6]/0 
-                  group-hover:from-[#7de0c6]/5 group-hover:to-transparent 
-                  transition-all duration-300 rounded-2xl pointer-events-none"
-                />
+                <div className="absolute inset-0 bg-gradient-to-br from-[#7de0c6]/0 to-[#7de0c6]/0 group-hover:from-[#7de0c6]/5 group-hover:to-transparent transition-all duration-300 rounded-2xl pointer-events-none" />
 
                 {/* Content wrapper */}
                 <div className="relative z-10">
                   {/* Top metadata row */}
-                  <div className="mb-4">
+                  <div className="mb-4 flex items-center justify-between">
                     {getOwnerOrMembers(workspace.ownerId)}
+
+                    {/* Three dot menu */}
+                    <div className="relative">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setOpenDropdown(
+                            openDropdown === workspace._id
+                              ? null
+                              : workspace._id
+                          );
+                        }}
+                        className="p-2 rounded-lg hover:bg-[#252b36] transition-colors opacity-0 group-hover:opacity-100"
+                      >
+                        <MoreVertical className="w-4 h-4 text-[#94a3b8]" />
+                      </button>
+
+                      {openDropdown === workspace._id && (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute right-0 mt-1 w-48 bg-[#1a1f28] border border-[#2d3748] rounded-lg shadow-xl z-20"
+                        >
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              console.log("Rename workspace:", workspace._id);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#94a3b8] hover:bg-[#252b36] hover:text-white transition-colors"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                            <span>Rename</span>
+                          </button>
+
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              console.log("Share workspace:", workspace._id);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#94a3b8] hover:bg-[#252b36] hover:text-white transition-colors"
+                          >
+                            <Share2 className="w-4 h-4" />
+                            <span>Share</span>
+                          </button>
+
+                          <div className="border-t border-[#2d3748] my-1" />
+
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              if (
+                                confirm(
+                                  `Delete "${workspace.name}"? This action cannot be undone.`
+                                )
+                              ) {
+                                deleteWorkspace(workspace._id);
+                              }
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            <span>Delete</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Main content */}
                   <div className="flex items-start gap-4">
                     {/* Icon with enhanced styling */}
-                    <div
-                      className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#252b36] to-[#1f242e] 
-                      flex items-center justify-center
-                      group-hover:from-[#2a3140] group-hover:to-[#252b36]
-                      group-hover:scale-105
-                      transition-all duration-300 shrink-0
-                      shadow-inner border border-[#2d3748]/50"
-                    >
+                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#252b36] to-[#1f242e] flex items-center justify-center group-hover:from-[#2a3140] group-hover:to-[#252b36] group-hover:scale-105 transition-all duration-300 shrink-0 shadow-inner border border-[#2d3748]/50">
                       <Folder className="w-7 h-7 text-[#7de0c6] group-hover:scale-110 transition-transform duration-300" />
                     </div>
 
                     {/* Text content */}
                     <div className="flex-1 min-w-0">
-                      <h3
-                        className="text-lg font-semibold text-white truncate mb-2
-                       group-hover:text-[#7de0c6] transition-colors duration-200"
-                      >
+                      <h3 className="text-lg font-semibold text-white truncate mb-2 group-hover:text-[#7de0c6] transition-colors duration-200">
                         {workspace.name}
                       </h3>
                       <p className="text-sm text-[#94a3b8] line-clamp-2 leading-relaxed mb-4 min-h-[2.5rem]">
@@ -224,7 +278,8 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 </div>
-              </Link>
+
+                </Link>
             ))}
           </div>
         )}

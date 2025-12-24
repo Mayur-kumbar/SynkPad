@@ -24,6 +24,7 @@ const authenticate = (req, res, next) => {
     req.user = {
       id: decoded.sub,
       email: decoded.email,
+      name: decoded.name,
       isEmailVerified: decoded.isEmailVerified,
     };
 

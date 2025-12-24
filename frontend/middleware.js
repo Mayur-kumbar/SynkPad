@@ -2,15 +2,15 @@ import { NextResponse } from "next/server";
 
 export function middleware(req) {
   const { pathname } = req.nextUrl;
-  const accessToken = req.cookies.get("accessToken")?.value;
+
+  const refreshToken = req.cookies.get("refreshToken")?.value;
 
   const isProtectedRoute =
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/editor") ||
     pathname.startsWith("/workspace");
 
-  // Not logged in → block protected routes only
-  if (!accessToken && isProtectedRoute) {
+  if (!refreshToken && isProtectedRoute) {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
@@ -20,9 +20,5 @@ export function middleware(req) {
 }
 
 export const config = {
-  matcher: [
-    "/dashboard/:path*",
-    "/editor/:path*",
-    "/workspace/:path*",
-  ],
+  matcher: ["/dashboard/:path*", "/editor/:path*", "/workspace/:path*"],
 };
