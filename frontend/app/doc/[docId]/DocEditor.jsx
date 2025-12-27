@@ -7,8 +7,10 @@ import StarterKit from "@tiptap/starter-kit"
 import * as Y from "yjs"
 import { WebsocketProvider } from "y-websocket"
 import { ySyncPlugin, yCursorPlugin, yUndoPlugin } from "y-prosemirror"
+import { useAuth } from "@/context/AuthContext"
 
 export default function DocEditor({ docId }) {
+  const { user } = useAuth()
   // Keep Yjs objects stable
   const ydocRef = useRef(null)
   const providerRef = useRef(null)
@@ -49,10 +51,10 @@ export default function DocEditor({ docId }) {
       editor.registerPlugin(yUndoPlugin())
       editor.registerPlugin(yCursorPlugin(provider.awareness))
 
-      // 5️⃣ Optional: set user info (presence)
+      // 5️⃣ Set real user info (presence)
       provider.awareness.setLocalStateField("user", {
-        name: "Anonymous",
-        color: "#ff6424",
+        name: user?.name || "Anonymous",
+        color: user?.color || "#ff6424",
       })
 
       // 6️⃣ Cleanup

@@ -14,58 +14,25 @@ export default function WorkspacePage() {
   const params = useParams()
   const router = useRouter()
   const [documents, setDocuments] = useState([])
+  const [workspaceDetails, setWorkspaceDetails] = useState(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isInvitesModalOpen, setIsInvitesModalOpen] = useState(false)
-  const {user, loading} = useAuth()
+  const { user, loading } = useAuth()
 
- 
-
-  const fetchDocuments = async () => {
-    // Placeholder API call
+  const fetchWorkspaceData = async () => {
     try {
-      const response = await api.get(`/workspace/${params.id}/documents`)
-      setDocuments(response.data)
+      const [docRes, detailRes] = await Promise.all([
+        api.get(`/workspace/${params.id}/documents`),
+        api.get(`/workspace/${params.id}`),
+      ])
+      setDocuments(docRes.data.documents)
+      setWorkspaceDetails(detailRes.data)
     } catch (error) {
-      console.error("Fetch documents error:", error)
+      console.error("Fetch workspace data error:", error)
     }
   }
 
-  // Mock data for UI
-  const mockDocuments = [
-    {
-      id: 1,
-      title: "Product Strategy — Q2",
-      type: "document",
-      lastEdited: "2 hours ago",
-      editor: "Mayur Kumbar",
-      collaborators: ["MK", "AR"],
-    },
-    {
-      id: 2,
-      title: "Design System Documentation",
-      type: "document",
-      lastEdited: "1 day ago",
-      editor: "Anika Rao",
-      collaborators: ["AR", "LP"],
-    },
-    {
-      id: 3,
-      title: "User Flow Diagrams",
-      type: "whiteboard",
-      lastEdited: "3 days ago",
-      editor: "Liam Patel",
-      collaborators: ["LP"],
-    },
-    {
-      id: 4,
-      title: "Meeting Notes - Sprint Planning",
-      type: "document",
-      lastEdited: "1 week ago",
-      editor: "Mayur Kumbar",
-      collaborators: ["MK"],
-    },
-  ]
 
   const createDocument = async (docData) => {
     try {
@@ -95,7 +62,7 @@ export default function WorkspacePage() {
 
    useEffect(() => {
     if (user) {
-      fetchDocuments()
+      fetchWorkspaceData()
     }
   }, [user])
 
@@ -127,19 +94,32 @@ export default function WorkspacePage() {
             <div className="w-12 h-12 bg-[#7de0c6] rounded-xl flex items-center justify-center">
               <FileText className="w-6 h-6 text-[#0f1419]" />
             </div>
-            <h1 className="text-3xl font-bold text-white">Mayurs Design Team</h1>
+            <h1 className="text-3xl font-bold text-white">
+              {workspaceDetails?.workspace?.name || "Loading..."}
+            </h1>
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1 mr-2">
-              <div className="w-8 h-8 bg-[#7de0c6] rounded-full flex items-center justify-center text-sm font-medium text-[#0f1419]">
-                MK
-              </div>
-              <div className="w-8 h-8 bg-[#fbbf24] rounded-full flex items-center justify-center text-sm font-medium text-[#0f1419]">
-                AR
-              </div>
-              <div className="w-8 h-8 bg-[#60a5fa] rounded-full flex items-center justify-center text-sm font-medium text-white">
-                LP
-              </div>
+              {workspaceDetails?.members?.slice(0, 3).map((member, idx) => (
+                <div
+                  key={member.id}
+                  title={member.name}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium border-2 border-[#1a1f28] ${
+                    idx === 0
+                      ? "bg-[#7de0c6] text-[#0f1419]"
+                      : idx === 1
+                      ? "bg-[#fbbf24] text-[#0f1419]"
+                      : "bg-[#60a5fa] text-white"
+                  }`}
+                >
+                  {member.name.substring(0, 2).toUpperCase()}
+                </div>
+              ))}
+              {workspaceDetails?.members?.length > 3 && (
+                <div className="w-8 h-8 bg-[#252b36] rounded-full flex items-center justify-center text-xs font-medium text-[#94a3b8] border-2 border-[#1a1f28]">
+                  +{workspaceDetails.members.length - 3}
+                </div>
+              )}
             </div>
             <button onClick={() => setIsInvitesModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-[#1a1f28] border border-[#2d3748] text-white font-medium rounded-lg hover:bg-[#252b36] transition-colors">
               <Users className="w-5 h-5" />
@@ -152,7 +132,9 @@ export default function WorkspacePage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-xl font-semibold text-white mb-1">Documents</h2>
-            <p className="text-[#94a3b8]">4 documents in this workspace</p>
+            <p className="text-[#94a3b8]">
+              {documents.length} {documents.length === 1 ? "document" : "documents"} in this workspace
+            </p>
           </div>
           <button
             onClick={() => setIsModalOpen(true)}
@@ -177,43 +159,47 @@ export default function WorkspacePage() {
 
         {/* Documents List */}
         <div className="space-y-3">
-          {mockDocuments.map((doc) => (
-            <Link
-              key={doc.id}
-              href={doc.type === "document" ? `/document/${doc.id}` : `/whiteboard/${doc.id}`}
-              className="flex items-center gap-4 bg-[#1a1f28] border border-[#2d3748] rounded-xl p-4 hover:bg-[#252b36] hover:border-[#7de0c6] transition-all"
-            >
-              <div
-                className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
-                  doc.type === "document" ? "bg-[#7de0c6]" : "bg-[#60a5fa]"
-                }`}
+          {documents
+            .filter((doc) =>
+              doc.title.toLowerCase().includes(searchQuery.toLowerCase())
+            )
+            .map((doc) => (
+              <Link
+                key={doc._id}
+                href={
+                  doc.type === "whiteboard"
+                    ? `/whiteboard/${doc._id}`
+                    : `/doc/${doc._id}`
+                }
+                className="flex items-center gap-4 bg-[#1a1f28] border border-[#2d3748] rounded-xl p-4 hover:bg-[#252b36] hover:border-[#7de0c6] transition-all"
               >
-                {doc.type === "document" ? (
-                  <FileText className="w-5 h-5 text-[#0f1419]" />
-                ) : (
-                  <Pencil className="w-5 h-5 text-white" />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-white font-medium mb-1 truncate">{doc.title}</h3>
-                <p className="text-sm text-[#94a3b8]">
-                  Edited {doc.lastEdited} by {doc.editor}
-                </p>
-              </div>
-              <div className="flex items-center gap-1">
-                {doc.collaborators.map((member, idx) => (
-                  <div
-                    key={idx}
-                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium ${
-                      idx === 0 ? "bg-[#7de0c6] text-[#0f1419]" : "bg-[#fbbf24] text-[#0f1419]"
-                    }`}
-                  >
-                    {member}
-                  </div>
-                ))}
-              </div>
-            </Link>
-          ))}
+                <div
+                  className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
+                    doc.type === "document" ? "bg-[#7de0c6]" : "bg-[#60a5fa]"
+                  }`}
+                >
+                  {doc.type === "document" ? (
+                    <FileText className="w-5 h-5 text-[#0f1419]" />
+                  ) : (
+                    <Pencil className="w-5 h-5 text-white" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-white font-medium mb-1 truncate">
+                    {doc.title}
+                  </h3>
+                  <p className="text-sm text-[#94a3b8]">
+                    Last edited {new Date(doc.updatedAt).toLocaleDateString()}
+                  </p>
+                </div>
+              </Link>
+            ))}
+
+          {documents.length === 0 && (
+            <div className="py-12 text-center text-[#94a3b8] border-2 border-dashed border-[#2d3748] rounded-xl">
+              No documents found. Create your first one to get started!
+            </div>
+          )}
         </div>
       </main>
 

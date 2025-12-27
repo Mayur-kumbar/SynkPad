@@ -278,4 +278,54 @@ const acceptWorspaceInvite = async (req, res ) => {
   }
 }
 
-export { createWorkspace, getWorkspaces, deleteWorkspace, inviteToWorkspace, getMyWorkspaceInvites, acceptWorspaceInvite};
+const getWorkspaceDetails = async (req, res) => {
+  const { workspaceId } = req.params;
+  try {
+    const workspace = await workspaceModel.findById(workspaceId);
+    if (!workspace) {
+      return res.status(404).json({ message: "Workspace not found" });
+    }
+
+    const members = await workspaceMembersModel
+      .find({ workspaceId })
+      .populate("userId", "name email");
+
+    return res.status(200).json({
+      workspace,
+      members: members.map((m) => ({
+        id: m.userId._id,
+        name: m.userId.name,
+        email: m.userId.email,
+        role: m.role,
+      })),
+    });
+  } catch (error) {
+    console.error("Error fetching workspace details:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+const getDocumentsToWorkspace = async (req, res) => {
+  const { workspaceId } = req.params;
+  try {
+    const documents = await documentModel
+      .find({ workspaceId })
+      .sort({ updatedAt: -1 });
+
+    return res.status(200).json({ documents });
+  } catch (error) {
+    console.error("Error fetching workspace documents:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export {
+  createWorkspace,
+  getWorkspaces,
+  deleteWorkspace,
+  inviteToWorkspace,
+  getMyWorkspaceInvites,
+  acceptWorspaceInvite,
+  getWorkspaceDetails,
+  getDocumentsToWorkspace,
+};

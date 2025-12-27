@@ -6,6 +6,10 @@ import { useRouter } from "next/navigation";
 
 const AuthContext = createContext(null);
 
+// Helper for presence colors
+const COLORS = ["#f87171", "#fb923c", "#fbbf24", "#4ade80", "#2dd4bf", "#60a5fa", "#818cf8", "#a78bfa", "#f472b6"];
+const getRandomColor = () => COLORS[Math.floor(Math.random() * COLORS.length)];
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -14,12 +18,38 @@ export function AuthProvider({ children }) {
   const fetchUser = async () => {
     try {
       const res = await api.get("/auth/me");
-      setUser(res.data.user);
+      setUser({
+        ...res.data.user,
+        color: getRandomColor()
+      });
     } catch {
       setUser(null);
     } finally {
       setLoading(false);
     }
+  };
+
+  const login = async (email, password) => {
+    const res = await api.post("/auth/login", { email, password });
+    setUser({
+      ...res.data.user,
+      color: getRandomColor()
+    });
+    router.push("/dashboard");
+  };
+
+  const register = async (name, email, password) => {
+    await api.post("/auth/register", { name, email, password });
+    router.push("/verify-email");
+  };
+
+  const googleLogin = async (idToken) => {
+    const res = await api.post("/auth/google", { idToken });
+    setUser({
+      ...res.data.user,
+      color: getRandomColor()
+    });
+    router.push("/dashboard");
   };
 
   const logout = async () => {
@@ -42,6 +72,9 @@ export function AuthProvider({ children }) {
         loading,
         isAuthenticated: !!user,
         fetchUser,
+        login,
+        register,
+        googleLogin,
         logout,
       }}
     >

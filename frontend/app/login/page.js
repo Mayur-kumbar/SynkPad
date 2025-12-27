@@ -6,8 +6,10 @@ import { useState, useRef } from "react";
 import axios from "axios";
 import { GoogleLogin } from "@react-oauth/google";
 import api from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 
 export default function LoginPage() {
+  const { login, googleLogin } = useAuth();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -21,17 +23,10 @@ export default function LoginPage() {
   const handleGoogleLoginSuccess = async (credentialResponse) => {
     setLoading(true)
     try {
-      await api.post(
-        "/auth/google",
-        {
-          idToken: credentialResponse.credential,
-        },
-        { withCredentials: true }
-      );
-
-      window.location.href = "/dashboard";
+      await googleLogin(credentialResponse.credential);
     } catch (error) {
       console.error("Google login failed:", error);
+      setError("Google login failed. Please try again.");
     } finally{
       setLoading(false)
     }
@@ -44,16 +39,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await api.post(
-        "/auth/login",
-        {
-          email: formData.email,
-          password: formData.password,
-        },
-        { withCredentials: true }
-      );
-
-      window.location.href = "/dashboard";
+      await login(formData.email, formData.password);
     } catch (err) {
       const status = err.response?.status;
       const message = err.response?.data?.message;

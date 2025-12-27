@@ -5,8 +5,10 @@ import { Layers } from "lucide-react";
 import { useState, useRef } from "react";
 import { GoogleLogin } from "@react-oauth/google";
 import api from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 
 export default function SignupPage() {
+  const { register, googleLogin } = useAuth();
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -24,11 +26,7 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      await api.post("/auth/google", {
-        idToken: credentialResponse.credential,
-      });
-
-      window.location.href = "/dashboard";
+      await googleLogin(credentialResponse.credential);
     } catch (err) {
       const status = err.response?.status;
       const message = err.response?.data?.message;
@@ -52,13 +50,7 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      await api.post("/auth/register", {
-        name: formData.fullName,
-        email: formData.email,
-        password: formData.password,
-      });
-
-      window.location.href = "/verify-email";
+      await register(formData.fullName, formData.email, formData.password);
     } catch (err) {
       const status = err.response?.status;
       const message = err.response?.data?.message;
