@@ -18,7 +18,6 @@ const processQueue = (error = null) => {
 };
 
 /* ---------- RESPONSE INTERCEPTOR ---------- */
-
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -28,14 +27,11 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // ❌ Never refresh on refresh endpoint
     if (originalRequest.url.includes("/auth/refresh-token")) {
-      // window.location.href = "/signup";
       return Promise.reject(error);
     }
 
     if (originalRequest._retry) {
-      // window.location.href = "/signup";
       return Promise.reject(error);
     }
 
@@ -57,7 +53,6 @@ api.interceptors.response.use(
     } catch (refreshError) {
       processQueue(refreshError);
       isRefreshing = false;
-      // window.location.href = "/signup";
       return Promise.reject(refreshError);
     }
   }

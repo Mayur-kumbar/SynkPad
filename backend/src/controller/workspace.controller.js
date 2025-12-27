@@ -212,4 +212,70 @@ const inviteToWorkspace = async (req, res) => {
   }
 };
 
-export { createWorkspace, getWorkspaces, deleteWorkspace, inviteToWorkspace };
+const getMyWorkspaceInvites = async (req, res) => {
+  const userId = req.user.id 
+  try {
+    const invites = await workspaceInviteModel.find({ userId, status: "pending"})
+    .populate("workspaceId", "name description")
+    .populate("invitedBy", "name email")
+    .sort({ createdAt: -1 });
+
+    return res.status(200).json({success: true, invites });
+  } catch (error) {
+    console.error("Error fetching invites:", error);
+    return res.status(500).json({ success: false, message: "Failed to fetch invites." });
+  }
+}
+
+const acceptWorspaceInvite = async (req, res ) => {
+  const {inviteId} = req.params
+  const userId = req.user.id
+
+  try {
+    const invite = await workspaceInviteModel.findOne({ _id: inviteId, userId, status: "pending"})
+
+    if(!invite){
+      return res.status(404).json({
+        success: false,
+        message: "Invite not found"
+      })
+    }
+
+    if(invite.userId.toString() !== userId){
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to accept this invite"
+      })
+    }
+
+    if(invite.status !== "pending"){
+      return res.status(400).json({
+        success: false,
+        message: "Invite is not pending"
+      })
+    }
+
+    await workspaceMembersModel.create({
+      workspaceId: invite.workspaceId,
+      userId: invite.userId,
+      role: invite.role,
+      invitedBy: invite.invitedBy
+    })
+
+    invite.status = "accepted"
+    await invite.save()
+
+    return res.status(200).json({
+      success: true,
+      message: "Invite accepted successfully"
+    })
+  } catch (error) {
+    console.error("Error accepting invite:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    })
+  }
+}
+
+export { createWorkspace, getWorkspaces, deleteWorkspace, inviteToWorkspace, getMyWorkspaceInvites, acceptWorspaceInvite};

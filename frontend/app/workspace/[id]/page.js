@@ -8,6 +8,7 @@ import Link from "next/link"
 import Header from "@/components/ui/Header"
 import CreateDocumentModal from "@/components/ui/CreateDocumentModal"
 import { useAuth } from "@/context/AuthContext"
+import SendInviteModal from "@/components/ui/SendInviteModal"
 
 export default function WorkspacePage() {
   const params = useParams()
@@ -15,11 +16,10 @@ export default function WorkspacePage() {
   const [documents, setDocuments] = useState([])
   const [searchQuery, setSearchQuery] = useState("")
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const {user} = useAuth()
+  const [isInvitesModalOpen, setIsInvitesModalOpen] = useState(false)
+  const {user, loading} = useAuth()
 
-  useEffect(() => {
-    fetchDocuments()
-  }, [])
+ 
 
   const fetchDocuments = async () => {
     // Placeholder API call
@@ -69,7 +69,7 @@ export default function WorkspacePage() {
 
   const createDocument = async (docData) => {
     try {
-      const response = await api.post(`/api/workspace/${params.id}/documents`, docData)
+      const response = await api.post(`/workspace/${params.id}/documents`, docData)
       // Navigate to the new document
       if (docData.docType === "whiteboard") {
         router.push(`/whiteboard/new`)
@@ -79,6 +79,32 @@ export default function WorkspacePage() {
     } catch (error) {
       console.error("Create document error:", error)
     }
+  }
+
+  const handleSendInvite = async(inviteData) => {
+    try {
+      await api.post(`/workspace/${params.id}/invite`, {
+        email: inviteData.email,
+        role: inviteData.role,
+      })
+      console.log("Invite sent successfully")
+    } catch (error) {
+      console.error("Send invite error:", error)
+    }
+  }
+
+   useEffect(() => {
+    if (user) {
+      fetchDocuments()
+    }
+  }, [user])
+
+  if(loading){
+    return null;
+  }
+
+  if(!user){
+    return null;
   }
 
   return (
@@ -101,7 +127,7 @@ export default function WorkspacePage() {
             <div className="w-12 h-12 bg-[#7de0c6] rounded-xl flex items-center justify-center">
               <FileText className="w-6 h-6 text-[#0f1419]" />
             </div>
-            <h1 className="text-3xl font-bold text-white">Mayur's Design Team</h1>
+            <h1 className="text-3xl font-bold text-white">Mayurs Design Team</h1>
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1 mr-2">
@@ -115,7 +141,7 @@ export default function WorkspacePage() {
                 LP
               </div>
             </div>
-            <button className="flex items-center gap-2 px-4 py-2 bg-[#1a1f28] border border-[#2d3748] text-white font-medium rounded-lg hover:bg-[#252b36] transition-colors">
+            <button onClick={() => setIsInvitesModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-[#1a1f28] border border-[#2d3748] text-white font-medium rounded-lg hover:bg-[#252b36] transition-colors">
               <Users className="w-5 h-5" />
               Invite
             </button>
@@ -192,6 +218,7 @@ export default function WorkspacePage() {
       </main>
 
       <CreateDocumentModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onCreate={createDocument} />
+      <SendInviteModal isOpen={isInvitesModalOpen} onClose={() => {setIsInvitesModalOpen(false)}} onSendInvite={handleSendInvite}/>
     </div>
   )
 }

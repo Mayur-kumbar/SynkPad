@@ -17,17 +17,16 @@ import Link from "next/link";
 import CreateWorkspaceModal from "@/components/ui/CreateWorkspaceModal";
 import Header from "@/components/ui/Header";
 import { useAuth } from "@/context/AuthContext";
+import InvitesModal from "@/components/ui/InvitesModal";
 
 export default function DashboardPage() {
   const [workspaces, setWorkspaces] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null);
-  const { user } = useAuth();
-
-  useEffect(() => {
-    fetchWorkspaces();
-  }, []);
+  const [isInvitesModalOpen, setIsInvitesModalOpen] = useState(false);
+  const [invites, setInvites] = useState([]);
+  const { user, loading } = useAuth();
 
   const fetchWorkspaces = async () => {
     try {
@@ -45,7 +44,7 @@ export default function DashboardPage() {
         description: workspaceData.description,
       });
       setWorkspaces((prev) => [...prev, res.data.workspace]);
-      fetchWorkspaces();
+      // fetchWorkspaces();
     } catch (error) {
       console.error("Create workspace error:", error);
     }
@@ -82,7 +81,11 @@ export default function DashboardPage() {
               : "bg-[#252b36] text-[#94a3b8] border border-[#2d3748]"
           }`}
         >
-          {isOwner ? <Crown className="w-4 h-4" /> : <Users className="w-4 h-4" />}
+          {isOwner ? (
+            <Crown className="w-4 h-4" />
+          ) : (
+            <Users className="w-4 h-4" />
+          )}
         </div>
         <span
           className={`text-xs font-medium uppercase ${
@@ -95,6 +98,29 @@ export default function DashboardPage() {
     );
   };
 
+  const handleInvites = async () => {
+    try {
+      const res = await api.get("/workspace/invites");
+      setInvites(res.data.invites);
+      console.log("Invites fetched:", res.data.invites);
+      setIsInvitesModalOpen(true);
+    } catch (error) {
+      console.error("Fetch invites error:", error);
+      return [];
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchWorkspaces();
+    }
+  }, [user]);
+
+  if (loading) return null; // or spinner
+
+  if (!user) {
+    return null; // AuthContext will redirect
+  }
   return (
     <div className="min-h-screen bg-[#0f1419]">
       <Header />
@@ -109,13 +135,22 @@ export default function DashboardPage() {
               Manage and access all your collaborative spaces
             </p>
           </div>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-[#7de0c6] text-[#0f1419] font-medium rounded-lg hover:bg-[#68c9ad] transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            New Workspace
-          </button>
+          <div className="flex items-center justify-center gap-4">
+            <button
+              onClick={handleInvites}
+              className="flex items-center gap-2 px-4 py-2 bg-[#1a1f28] border border-[#2d3748] text-white font-medium rounded-lg hover:bg-[#252b36] transition-colors"
+            >
+              <Users className="w-5 h-5" />
+              My Invites
+            </button>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-[#7de0c6] text-[#0f1419] font-medium rounded-lg hover:bg-[#68c9ad] transition-colors"
+            >
+              <Plus className="w-5 h-5" />
+              New Workspace
+            </button>
+          </div>
         </div>
 
         <div className="relative mb-8">
@@ -278,8 +313,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 </div>
-
-                </Link>
+              </Link>
             ))}
           </div>
         )}
@@ -289,6 +323,15 @@ export default function DashboardPage() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onCreate={createWorkspace}
+      />
+
+      <InvitesModal
+        isOpen={isInvitesModalOpen}
+        onClose={() => {
+          setIsInvitesModalOpen(false);
+        }}
+        invites={invites}
+        onInviteAccepted={fetchWorkspaces}
       />
     </div>
   );
