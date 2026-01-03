@@ -309,7 +309,7 @@ const getDocumentsToWorkspace = async (req, res) => {
   const { workspaceId } = req.params;
   try {
     const documents = await documentModel
-      .find({ workspaceId })
+      .find({ workspaceId, isDeleted: false })
       .sort({ updatedAt: -1 });
 
     return res.status(200).json({ documents });

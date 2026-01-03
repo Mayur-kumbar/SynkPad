@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { registerUser, loginUser, refreshAccessToken, logoutUser, verifyEmail, resendVerificationEmail, getCurrentUser, googleOAuthCallback } from "../controller/auth.controller.js";
+import { registerUser, loginUser, refreshAccessToken, logoutUser, verifyEmail, resendVerificationEmail, getCurrentUser, googleOAuthCallback, getWSAuthToken } from "../controller/auth.controller.js";
 import authenticate from "../middleware/auth.middleware.js";
 
 const router = Router();
@@ -12,5 +12,6 @@ router.post("/login", loginUser)
 router.post("/refresh-token", refreshAccessToken)
 router.post("/logout", logoutUser)
 router.post("/google", googleOAuthCallback)
+router.get("/ws-token", getWSAuthToken)
 
 export default router;

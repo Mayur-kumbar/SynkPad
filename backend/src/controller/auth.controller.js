@@ -328,6 +328,12 @@ const resendVerificationEmail = async (req, res) => {
   res.status(200).json({ message: genericMessage });
 };
 
+const getWSAuthToken = async (req, res) => {
+  const token = req.cookies.accessToken;
+  if (!token) return res.status(401).json({ message: "Not authenticated" });
+  res.json({ token });
+};
+
 /* -------------------- EXPORTS -------------------- */
 
 export {
@@ -339,4 +345,5 @@ export {
   verifyEmail,
   getCurrentUser,
   resendVerificationEmail,
+  getWSAuthToken,
 };

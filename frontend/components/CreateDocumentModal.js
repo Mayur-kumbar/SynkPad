@@ -4,18 +4,14 @@ import { useState } from "react"
 import { X, FileText, Pencil, Layers, FileStack, Zap, ChevronDown } from "lucide-react"
 
 export default function CreateDocumentModal({ isOpen, onClose, onCreate }) {
-  const [name, setName] = useState("")
+  const [title, setTitle] = useState("")
   const [docType, setDocType] = useState("document")
-  const [template, setTemplate] = useState("blank")
-  const [sharing, setSharing] = useState("private")
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    onCreate({ name, docType, template, sharing })
-    setName("")
+    onCreate({ title, docType})
+    setTitle("")
     setDocType("document")
-    setTemplate("blank")
-    setSharing("private")
     onClose()
   }
 
@@ -25,9 +21,6 @@ export default function CreateDocumentModal({ isOpen, onClose, onCreate }) {
   const selectedTypeClass = baseTypeClass + " bg-[#252b36] border-[#7de0c6]"
   const unselectedTypeClass = baseTypeClass + " bg-[#0f1419] border-[#2d3748] hover:border-[#3d4758]"
 
-  const baseSharingClass = "flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-all"
-  const selectedSharingClass = baseSharingClass + " bg-[#252b36] border-[#7de0c6]"
-  const unselectedSharingClass = baseSharingClass + " bg-[#0f1419] border-[#2d3748] hover:border-[#3d4758]"
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -46,8 +39,8 @@ export default function CreateDocumentModal({ isOpen, onClose, onCreate }) {
             <label className="block text-sm font-medium text-white mb-2">Document Name</label>
             <input
               type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g., Product Roadmap, Meeting Notes"
               className="w-full px-4 py-3 bg-[#0f1419] border border-[#2d3748] rounded-lg text-white placeholder-[#64748b] focus:outline-none focus:ring-2 focus:ring-[#7de0c6] focus:border-transparent"
             />
@@ -135,82 +128,7 @@ export default function CreateDocumentModal({ isOpen, onClose, onCreate }) {
                 </div>
               </label>
 
-              <label className={docType === "template" ? selectedTypeClass : unselectedTypeClass}>
-                <input
-                  type="radio"
-                  name="docType"
-                  value="template"
-                  checked={docType === "template"}
-                  onChange={(e) => setDocType(e.target.value)}
-                  className="sr-only"
-                />
-                <div
-                  className={
-                    docType === "template"
-                      ? "w-6 h-6 rounded flex items-center justify-center bg-[#f97316]"
-                      : "w-6 h-6 rounded flex items-center justify-center bg-[#252b36]"
-                  }
-                >
-                  <FileStack
-                    className={docType === "template" ? "w-3.5 h-3.5 text-[#0f1419]" : "w-3.5 h-3.5 text-[#f97316]"}
-                  />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <span className="block text-white text-sm font-medium">From Template</span>
-                  <span className="text-xs text-[#64748b]">Start with a template</span>
-                </div>
-              </label>
-            </div>
-          </div>
-
-          <div className="mb-5">
-            <label className="block text-sm font-medium text-white mb-2">Template (optional)</label>
-            <div className="relative">
-              <select
-                value={template}
-                onChange={(e) => setTemplate(e.target.value)}
-                className="w-full px-4 py-3 bg-[#0f1419] border border-[#2d3748] rounded-lg text-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#7de0c6] focus:border-transparent"
-              >
-                <option value="blank">Blank Document</option>
-                <option value="meeting">Meeting Notes</option>
-                <option value="roadmap">Product Roadmap</option>
-                <option value="spec">Technical Spec</option>
-              </select>
-              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94a3b8] pointer-events-none" />
-            </div>
-          </div>
-
-          <div className="mb-5">
-            <label className="block text-sm font-medium text-white mb-3">Sharing</label>
-            <div className="space-y-2">
-              <label className={sharing === "private" ? selectedSharingClass : unselectedSharingClass}>
-                <input
-                  type="radio"
-                  name="sharing"
-                  value="private"
-                  checked={sharing === "private"}
-                  onChange={(e) => setSharing(e.target.value)}
-                  className="mt-0.5 w-4 h-4 accent-[#7de0c6]"
-                />
-                <div>
-                  <span className="block text-white font-medium">Private to me</span>
-                  <span className="text-sm text-[#64748b]">Only you can access this document</span>
-                </div>
-              </label>
-              <label className={sharing === "workspace" ? selectedSharingClass : unselectedSharingClass}>
-                <input
-                  type="radio"
-                  name="sharing"
-                  value="workspace"
-                  checked={sharing === "workspace"}
-                  onChange={(e) => setSharing(e.target.value)}
-                  className="mt-0.5 w-4 h-4 accent-[#7de0c6]"
-                />
-                <div>
-                  <span className="block text-white font-medium">Workspace members</span>
-                  <span className="text-sm text-[#64748b]">All workspace members can view and edit</span>
-                </div>
-              </label>
+             
             </div>
           </div>
 
@@ -237,7 +155,7 @@ export default function CreateDocumentModal({ isOpen, onClose, onCreate }) {
             </button>
             <button
               type="submit"
-              disabled={!name.trim()}
+              disabled={!title.trim()}
               className="px-6 py-2.5 bg-[#7de0c6] text-[#0f1419] font-medium rounded-lg hover:bg-[#68c9ad] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Create Document

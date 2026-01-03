@@ -14,10 +14,11 @@ import {
 } from "lucide-react";
 import api from "@/lib/api";
 import Link from "next/link";
-import CreateWorkspaceModal from "@/components/ui/CreateWorkspaceModal";
+import CreateWorkspaceModal from "@/components/CreateWorkspaceModal";
 import Header from "@/components/ui/Header";
 import { useAuth } from "@/context/AuthContext";
-import InvitesModal from "@/components/ui/InvitesModal";
+import InvitesModal from "@/components/InvitesModal";
+import getLastActiveTime from "@/lib/getLastActiveTime";
 
 export default function DashboardPage() {
   const [workspaces, setWorkspaces] = useState([]);
@@ -60,14 +61,7 @@ export default function DashboardPage() {
     }
   };
 
-  const getLastActiveTime = (updatedAt) => {
-    const diff = Date.now() - new Date(updatedAt).getTime();
-    const mins = Math.floor(diff / (1000 * 60));
-    if (mins < 60) return `${mins}m ago`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs}h ago`;
-    return `${Math.floor(hrs / 24)}d ago`;
-  };
+  
 
   const getOwnerOrMembers = (ownerId) => {
     const isOwner = user && user.id === ownerId;

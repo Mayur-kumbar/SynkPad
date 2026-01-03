@@ -14,10 +14,11 @@ const documentSchema = new mongoose.Schema(
       trim: true,
     },
 
-    parentId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Document",
-      default: null,
+    docType: {
+      type: String,
+      enum: ["document", "whiteboard", "combined"],
+      required: true,
+      default: "document",
     },
 
     createdBy: {
@@ -40,7 +41,6 @@ const documentSchema = new mongoose.Schema(
 
 /* Indexes */
 documentSchema.index({ workspaceId: 1 })
-documentSchema.index({ parentId: 1 })
 documentSchema.index({ createdBy: 1 })
 
 export default mongoose.model("Document", documentSchema)
