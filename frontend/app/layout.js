@@ -1,8 +1,11 @@
+"use client"
+
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { AuthProvider } from "@/context/AuthContext";
+import { LiveblocksProvider } from "@liveblocks/react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,11 +17,6 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata = {
-  title: "SynkPad",
-  description: "A collaborative markdown editor and whiteboard application.",
-};
-
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
@@ -29,7 +27,9 @@ export default function RootLayout({ children }) {
           <GoogleOAuthProvider
             clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}
           >
-            {children}
+            <LiveblocksProvider publicApiKey="pk_dev_5tFbQozonAKkSvcyIafhk-eHuklG43WxY1iaQY1UrXQBE6X6yMMuECUekMHlRclE">
+              {children}
+            </LiveblocksProvider>
           </GoogleOAuthProvider>
         </AuthProvider>
       </body>

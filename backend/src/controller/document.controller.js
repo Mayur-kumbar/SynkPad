@@ -112,7 +112,8 @@ const getDocumentDetails = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            document
+            document,
+            role: req.workspaceRole
         })
     } catch (error) {
         return res.status(500).json({

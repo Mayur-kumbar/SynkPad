@@ -8,7 +8,7 @@ import { useState, useEffect, useCallback } from "react";
 export default function CommentsPanel({ documentDetails }) {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
-  const [isPanelOpen, setIsPanelOpen] = useState(true);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
 
   const fetchComments = useCallback(async () => {
     if (!documentDetails?._id || !documentDetails?.workspaceId) return;
@@ -18,7 +18,6 @@ export default function CommentsPanel({ documentDetails }) {
         `/workspace/${documentDetails.workspaceId}/document/${documentDetails._id}/comments`
       );
       setComments(response.data.comments);
-      console.log(response.data);
     } catch (error) {
       console.error("Fetch comments error:", error);
     }
