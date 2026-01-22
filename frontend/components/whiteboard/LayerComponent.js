@@ -12,7 +12,7 @@ function getSvgPathFromStroke(stroke) {
       acc.push(x0, y0, (x0 + x1) / 2, (y0 + y1) / 2);
       return acc;
     },
-    ["M", ...stroke[0], "Q"]
+    ["M", ...stroke[0], "Q"],
   );
   d.push("Z");
   return d.join(" ");
@@ -37,6 +37,7 @@ export default function LayerComponent({
   onDoubleClick,
   onResizeStart,
   onTextChange,
+  layers,
 }) {
   let generator = null;
   if (typeof window !== "undefined") {
@@ -44,18 +45,6 @@ export default function LayerComponent({
   }
 
   if (!layer) return null;
-
-  const style = {
-    // Only translate for non-path layers (paths have absolute coordinates)
-    transform:
-      layer.type === "pencil"
-        ? undefined
-        : `translate(${layer.x}px, ${layer.y}px)`,
-    fill: layer.fill,
-    stroke: isSelected ? "#60a5fa" : "transparent",
-    strokeWidth: isSelected ? 2 : 0,
-    cursor: "move",
-  };
 
   switch (layer.type) {
     case "rectangle":
@@ -84,7 +73,7 @@ export default function LayerComponent({
                     hachureGap: 8,
                     hachureAngle: 60,
                     seed: layer.seed,
-                  }
+                  },
                 );
 
                 return generator
@@ -145,7 +134,7 @@ export default function LayerComponent({
                     roughness: 1.2,
                     bowing: 0.8,
                     seed: layer.seed,
-                  }
+                  },
                 );
                 return generator
                   .toPaths(drawable)
@@ -246,7 +235,7 @@ export default function LayerComponent({
                     id,
                     newText,
                     Math.max(40, el.scrollWidth + 10),
-                    Math.max(30, el.scrollHeight + 10)
+                    Math.max(30, el.scrollHeight + 10),
                   );
                 }}
               >
@@ -278,7 +267,34 @@ export default function LayerComponent({
       );
 
     case "arrow": {
-      const { start, end, color } = layer;
+      const color = layer.color || "#000";
+
+      // Base values
+      let start = layer.start;
+      let end = layer.end;
+
+      // Resolve START binding
+      if (layer.startBinding) {
+        const target = layers[layer.startBinding.layerId];
+        if (target) {
+          start = {
+            x: target.x + target.width / 2 + layer.startBinding.offset.x,
+            y: target.y + target.height / 2 + layer.startBinding.offset.y,
+          };
+        }
+      }
+
+      // Resolve END binding
+      if (layer.endBinding) {
+        const target = layers[layer.endBinding.layerId];
+        if (target) {
+          end = {
+            x: target.x + target.width / 2 + layer.endBinding.offset.x,
+            y: target.y + target.height / 2 + layer.endBinding.offset.y,
+          };
+        }
+      }
+
       const dx = end.x - start.x;
       const dy = end.y - start.y;
       const angle = Math.atan2(dy, dx);
@@ -290,12 +306,22 @@ export default function LayerComponent({
       const hy2 = end.y - headLen * Math.sin(angle + Math.PI / 6);
 
       return (
-        <g  onPointerDown={(e) => onPointerDown(e, id)}>
-          {/* Rough main line */}
+        <g onPointerDown={(e) => onPointerDown(e, id)}>
+          {/* Invisible hit area */}
+          <line
+            x1={start.x}
+            y1={start.y}
+            x2={end.x}
+            y2={end.y}
+            stroke="transparent"
+            strokeWidth={15}
+          />
+
+          {/* Rough line */}
           {generator &&
             (() => {
               const drawable = generator.line(start.x, start.y, end.x, end.y, {
-                stroke: color || "#000",
+                stroke: color,
                 strokeWidth: 2,
                 roughness: 1.2,
                 bowing: 0.8,
@@ -317,7 +343,7 @@ export default function LayerComponent({
           {/* Arrow head */}
           <polygon
             points={`${end.x},${end.y} ${hx1},${hy1} ${hx2},${hy2}`}
-            fill={color || "#000"}
+            fill={color}
           />
         </g>
       );

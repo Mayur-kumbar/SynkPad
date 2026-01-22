@@ -22,12 +22,13 @@ export default function Whiteboard({ role }) {
   const [selectedLayerId, setSelectedLayerId] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [lastPoint, setLastPoint] = useState(null);
-  const [fill, setFill] = useState("#3b82f6");
+  const [fill, setFill] = useState("#ffffff");
   const [draftLayer, setDraftLayer] = useState(null);
   const [startPoint, setStartPoint] = useState(null);
   const [activePencilId, setActivePencilId] = useState(null);
   const [resizing, setResizing] = useState(null);
+  const [activeArrowId, setActiveArrowId] = useState(null);
+  const [draftArrow, setDraftArrow] = useState(null);
 
   // Undo/Redo hooks
   const undo = useUndo();
@@ -58,7 +59,7 @@ export default function Whiteboard({ role }) {
     setSelectedLayerId(layerId);
 
     // Auto-switch tool except for pencil
-    if (layerData.type !== "pencil") {
+    if (layerData.type !== "pencil" && layerData.type !== "arrow") {
       setActiveTool("cursor");
     }
 
@@ -66,24 +67,15 @@ export default function Whiteboard({ role }) {
   }, []);
 
   const updateLayerPosition = useMutation(({ storage }, layerId, newPos) => {
-    const layer = storage.get("layers").get(layerId);
-    if (layer) layer.update(newPos);
-  }, []);
+    const layers = storage.get("layers");
+    const layer = layers.get(layerId);
+    if (!layer) return;
 
-  const updatePencilStroke = useMutation(({ storage }, layerId, point) => {
-    const layer = storage.get("layers").get(layerId);
-    if (layer && layer.get("type") === "pencil") {
-      const points = layer.get("points");
-      // Only add point if it's far enough from the last point to avoid excessive data
-      const last = points[points.length - 1];
-      if (
-        !last ||
-        Math.abs(last[0] - point.x) > 2 ||
-        Math.abs(last[1] - point.y) > 2
-      ) {
-        layer.set("points", [...points, [point.x, point.y]]);
-      }
-    }
+    layer.update(newPos);
+
+    const width = layer.get("width");
+    const height = layer.get("height");
+
   }, []);
 
   const deleteLayer = useMutation(
@@ -93,7 +85,7 @@ export default function Whiteboard({ role }) {
         setSelectedLayerId(null);
       }
     },
-    [selectedLayerId]
+    [selectedLayerId],
   );
 
   const bringToFront = useMutation(({ storage }, layerId) => {
@@ -155,6 +147,8 @@ export default function Whiteboard({ role }) {
       x: end.x + dx,
       y: end.y + dy,
     });
+    layer.set("startBinding", null);
+    layer.set("endBinding", null);
   }, []);
 
   // Event Handlers
@@ -195,15 +189,13 @@ export default function Whiteboard({ role }) {
     }
 
     if (activeTool === "arrow") {
-      const id = insertLayer({
-        type: "arrow",
+      room.history.pause();
+      setDraftArrow({
         start: point,
         end: point,
         color: fill,
       });
       setIsDragging(true);
-      setSelectedLayerId(id);
-      setActivePencilId(id); // reuse as active arrow id
       return;
     }
 
@@ -242,7 +234,7 @@ export default function Whiteboard({ role }) {
 
       const layer = layers.get(layerId);
       if (layer?.type === "arrow") {
-        setDragOffset({ x: point.x, y: point.y });
+        setDragOffset({ x: point.x, y: point.y }); // store last mouse pos
       } else if (layer) {
         setDragOffset({
           x: point.x - layer.x,
@@ -265,6 +257,55 @@ export default function Whiteboard({ role }) {
       layer.set("height", h);
     }
   }, []);
+  const insertArrowWithBinding = useMutation(({ storage }, draftArrow) => {
+    const layers = storage.get("layers");
+    if (!layers) return null;
+
+    const findBinding = (point) => {
+      for (const [id, layer] of layers) {
+        const type = layer.get("type");
+        if (type !== "rectangle" && type !== "circle") continue;
+
+        const x = layer.get("x");
+        const y = layer.get("y");
+        const w = layer.get("width");
+        const h = layer.get("height");
+
+        const cx = x + w / 2;
+        const cy = y + h / 2;
+
+        if (Math.hypot(point.x - cx, point.y - cy) < 30) {
+          return {
+            layerId: id,
+            offset: {
+              x: point.x - cx,
+              y: point.y - cy,
+            },
+          };
+        }
+      }
+      return null;
+    };
+
+    const startBinding = findBinding(draftArrow.start);
+    const endBinding = findBinding(draftArrow.end);
+
+    const id = crypto.randomUUID();
+    layers.set(
+      id,
+      new LiveObject({
+        type: "arrow",
+        start: draftArrow.start,
+        end: draftArrow.end,
+        startBinding,
+        endBinding,
+        color: draftArrow.color,
+        seed: Math.floor(Math.random() * 1_000_000),
+      }),
+    );
+
+    return id;
+  }, []);
 
   const onLayerDoubleClick = (e, layerId) => {
     if (role === "viewer") return;
@@ -284,14 +325,19 @@ export default function Whiteboard({ role }) {
   const onCanvasPointerMove = (e, point) => {
     if (role === "viewer") return;
 
-    // Move arrow
-    // Move arrow
+    if (activeTool === "arrow" && isDragging && draftArrow) {
+      setDraftArrow((prev) => ({
+        ...prev,
+        end: point,
+      }));
+      return;
+    }
+
     if (activeTool === "cursor" && isDragging && selectedLayerId) {
       const layer = layers.get(selectedLayerId);
       if (layer?.type === "arrow") {
         const dx = point.x - dragOffset.x;
         const dy = point.y - dragOffset.y;
-
         moveArrow(selectedLayerId, dx, dy);
         setDragOffset({ x: point.x, y: point.y });
         return;
@@ -421,16 +467,24 @@ export default function Whiteboard({ role }) {
 
     if (!point || role === "viewer") return;
 
+    if (activeTool === "arrow" && draftArrow) {
+      const id = insertArrowWithBinding(draftArrow);
+
+      setSelectedLayerId(id);
+      setDraftArrow(null);
+      setActiveTool("cursor");
+      room.history.resume();
+      return;
+    }
+
     if (resizing) {
       setResizing(null);
-      setIsDragging(false);
-      room.history.resume();
       return;
     }
 
     // 1. Commit draft shape (rectangle / circle)
     if (draftLayer) {
-      insertLayer(draftLayer); // draftLayer already has x,y,width,height,fill,type
+      insertLayer(draftLayer);
       setDraftLayer(null);
       setStartPoint(null);
       return;
@@ -449,12 +503,6 @@ export default function Whiteboard({ role }) {
     if (activeTool === "pencil" && activePencilId) {
       updatePencilStroke(activePencilId, point);
       setActivePencilId(null);
-    }
-
-    if (activeTool === "arrow" && activePencilId) {
-      updateArrow(activePencilId, point);
-      setActivePencilId(null);
-      return;
     }
   };
 
@@ -492,6 +540,7 @@ export default function Whiteboard({ role }) {
         draftLayer={draftLayer} // ADD THIS
         onResizeStart={onResizeStart}
         onTextChange={updateLayerText}
+        draftArrow={draftArrow}
       />
     </div>
   );

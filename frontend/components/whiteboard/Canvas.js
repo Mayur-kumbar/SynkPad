@@ -16,6 +16,7 @@ export default function Canvas({
   draftLayer,
   onResizeStart,
   onTextChange,
+  draftArrow,
 }) {
   // Infinite query for layers
   const layers = useStorage((root) => root.layers);
@@ -32,7 +33,7 @@ export default function Canvas({
       const zoomSensitivity = 0.001;
       const newZoom = Math.min(
         Math.max(camera.z - e.deltaY * zoomSensitivity, 0.1),
-        5
+        5,
       );
 
       setCamera((prev) => ({ ...prev, z: newZoom }));
@@ -117,6 +118,16 @@ export default function Canvas({
             fill="url(#grid)"
           />
 
+          {draftArrow && (
+            <LayerComponent
+              id="draft-arrow"
+              layer={{ type: "arrow", ...draftArrow }}
+              isSelected={false}
+              onPointerDown={() => {}}
+              onDoubleClick={() => {}}
+            />
+          )}
+
           {draftLayer && (
             <LayerComponent
               id="draft"
@@ -124,8 +135,9 @@ export default function Canvas({
               isSelected={false}
               onPointerDown={() => {}}
               onDoubleClick={() => {}}
-              onResizeStart={() => {}}  
-              onTextChange={() => {}}  
+              onResizeStart={() => {}}
+              onTextChange={() => {}}
+              layers={layers}
             />
           )}
 
@@ -141,6 +153,7 @@ export default function Canvas({
               onDoubleClick={onLayerDoubleClick}
               onResizeStart={onResizeStart}
               onTextChange={onTextChange}
+              layers={layers}
             />
           ))}
         </g>

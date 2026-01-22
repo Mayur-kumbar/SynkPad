@@ -1,3 +1,4 @@
+import apminsight from 'apminsight';
 import dotenv from 'dotenv'
 dotenv.config()
 

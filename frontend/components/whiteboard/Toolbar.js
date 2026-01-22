@@ -1,27 +1,27 @@
 "use client";
 
-import { 
-  Pointer, 
-  Square, 
-  Circle as CircleIcon, 
-  Type, 
+import {
+  Pointer,
+  Square,
+  Circle as CircleIcon,
+  Type,
   Pencil,
-  Undo, 
+  Undo,
   Redo,
   Trash2,
-  ArrowUpRight
+  ArrowUpRight,
 } from "lucide-react";
 
-export default function Toolbar({ 
-  activeTool, 
-  setActiveTool, 
-  canUndo, 
-  canRedo, 
-  onUndo, 
+export default function Toolbar({
+  activeTool,
+  setActiveTool,
+  canUndo,
+  canRedo,
+  onUndo,
   onRedo,
   onDelete,
   fill,
-  setFill
+  setFill,
 }) {
   const tools = [
     { id: "cursor", icon: Pointer, label: "Select" },
@@ -29,16 +29,15 @@ export default function Toolbar({
     { id: "circle", icon: CircleIcon, label: "Circle" },
     { id: "pencil", icon: Pencil, label: "Pencil" },
     { id: "text", icon: Type, label: "Text" },
-    { id: "arrow", icon: ArrowUpRight, label: "Arrow" }
-
+    { id: "arrow", icon: ArrowUpRight, label: "Arrow" },
   ];
 
   const colors = [
+    "#ffffff", // White
     "#3b82f6", // Blue
     "#ef4444", // Red
     "#10b981", // Green
     "#f59e0b", // Yellow
-    "#ffffff", // White
   ];
 
   return (
@@ -49,7 +48,9 @@ export default function Toolbar({
             key={tool.id}
             onClick={() => setActiveTool(tool.id)}
             className={`p-2 rounded hover:bg-[#374151] transition-colors ${
-              activeTool === tool.id ? "bg-[#374151] text-blue-400" : "text-gray-400"
+              activeTool === tool.id
+                ? "bg-[#374151] text-white"
+                : "text-gray-400"
             }`}
             title={tool.label}
           >
@@ -64,14 +65,16 @@ export default function Toolbar({
             key={c}
             onClick={() => setFill(c)}
             className={`w-6 h-6 rounded-full border border-white/10 transition-transform hover:scale-110 ${
-                fill === c ? "ring-2 ring-blue-400 ring-offset-2 ring-offset-[#1f2937]" : ""
+              fill === c
+                ? "ring-2 ring-blue-400 ring-offset-2 ring-offset-[#1f2937]"
+                : ""
             }`}
             style={{ backgroundColor: c }}
             title={c}
           />
         ))}
       </div>
-      
+
       <div className="flex gap-1 pl-1">
         <button
           onClick={onUndo}
@@ -89,7 +92,7 @@ export default function Toolbar({
         >
           <Redo size={18} />
         </button>
-         <button
+        <button
           onClick={onDelete}
           className="p-2 rounded hover:bg-[#374151] hover:text-red-400 text-gray-400 transition-colors"
           title="Delete Selected"
